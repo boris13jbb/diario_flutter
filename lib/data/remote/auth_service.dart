@@ -1,108 +1,96 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-/// Servicio de autenticación con Supabase
+/// Autenticación con Firebase Auth (email/contraseña).
 class AuthService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final FirebaseAuth _auth;
 
-  /// Obtiene la sesión actual del usuario
-  Session? get currentSession => _supabase.auth.currentSession;
+  AuthService({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
 
-  /// Obtiene el usuario actual
-  User? get currentUser => _supabase.auth.currentUser;
+  User? get currentUser => _auth.currentUser;
 
-  /// Stream de cambios en el estado de autenticación
-  Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  /// Inicia sesión con email y contraseña
-  Future<AuthResponse> signIn({
+  Future<void> signIn({
     required String email,
     required String password,
   }) async {
     try {
-      final response = await _supabase.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-      return response;
-    } on AuthException catch (e) {
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+    } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
       throw Exception('Error inesperado al iniciar sesión: $e');
     }
   }
 
-  /// Registra un nuevo usuario
-  Future<AuthResponse> signUp({
+  Future<void> signUp({
     required String email,
     required String password,
   }) async {
     try {
-      final response = await _supabase.auth.signUp(
+      await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      return response;
-    } on AuthException catch (e) {
+    } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
       throw Exception('Error inesperado al registrar usuario: $e');
     }
   }
 
-  /// Cierra la sesión del usuario actual
   Future<void> signOut() async {
     try {
-      await _supabase.auth.signOut();
+      await _auth.signOut();
     } catch (e) {
       throw Exception('Error al cerrar sesión: $e');
     }
   }
 
-  /// Envía email de recuperación de contraseña
   Future<void> resetPassword(String email) async {
     try {
-      await _supabase.auth.resetPasswordForEmail(email);
-    } on AuthException catch (e) {
+      await _auth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
       throw Exception('Error al enviar email de recuperación: $e');
     }
   }
 
-  /// Actualiza la contraseña del usuario
   Future<void> updatePassword(String newPassword) async {
     try {
-      await _supabase.auth.updateUser(
-        UserAttributes(password: newPassword),
-      );
-    } on AuthException catch (e) {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('No hay sesión activa');
+      }
+      await user.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
       throw Exception('Error al actualizar contraseña: $e');
     }
   }
 
-  /// Verifica si el usuario está autenticado
   bool get isAuthenticated => currentUser != null;
 
-  /// Obtiene el ID del usuario actual
-  String? get userId => currentUser?.id;
+  String? get userId => currentUser?.uid;
 
-  /// Maneja las excepciones de autenticación y retorna mensajes amigables
-  Exception _handleAuthException(AuthException e) {
-    switch (e.message.toLowerCase()) {
-      case 'invalid login credentials':
+  Exception _handleAuthException(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-credential':
+      case 'wrong-password':
+      case 'user-not-found':
         return Exception('Email o contraseña incorrectos');
-      case 'User not found':
-        return Exception('Usuario no encontrado');
-      case 'User already registered':
+      case 'email-already-in-use':
         return Exception('Este email ya está registrado');
-      case 'Weak password':
+      case 'weak-password':
         return Exception('La contraseña es demasiado débil');
-      case 'Email not confirmed':
-        return Exception('Por favor, confirma tu email antes de iniciar sesión');
+      case 'invalid-email':
+        return Exception('El email no es válido');
+      case 'user-disabled':
+        return Exception('Esta cuenta está deshabilitada');
       default:
-        return Exception('Error de autenticación: ${e.message}');
+        return Exception('Error de autenticación: ${e.message ?? e.code}');
     }
   }
 }

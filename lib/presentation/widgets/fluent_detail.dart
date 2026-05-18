@@ -99,6 +99,8 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
     final bgColor = isDark ? FluentColors.surfaceDark : FluentColors.surfaceLight;
     final textColor = isDark ? FluentColors.textPrimaryDark : FluentColors.textPrimaryLight;
     final secondaryTextColor = isDark ? FluentColors.textSecondaryDark : FluentColors.textSecondaryLight;
+    final isFavorite =
+        ref.watch(diaryViewModelProvider).favoriteIds.contains(entry!.id);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -118,6 +120,15 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              isFavorite ? Icons.star : Icons.star_border,
+              color: FluentColors.warning,
+            ),
+            tooltip: isFavorite ? 'Quitar de favoritos' : 'Marcar como favorita',
+            onPressed: () =>
+                ref.read(diaryViewModelProvider.notifier).toggleFavorite(entry!.id),
+          ),
           // Botón editar
           Container(
             margin: const EdgeInsets.only(right: FluentSpacing.xs),

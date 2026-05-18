@@ -17,7 +17,7 @@ class DiaryEntry with _$DiaryEntry {
     @JsonKey(name: 'audio_markers', defaultValue: []) @Default([]) List<AudioMarker> audioMarkers, // Marcadores de audio
     @JsonKey(name: 'draw_strokes', defaultValue: []) @Default([]) List<DrawStroke> drawStrokes, // Trazos de dibujo
     @JsonKey(name: 'audio_file_path') String? audioFilePath, // Ruta al archivo de audio grabado
-    @Default(false) bool synced, // Estado de sincronización con Supabase
+    @Default(false) bool synced, // Estado de sincronización con Firestore
     @JsonKey(name: 'last_updated') required int lastUpdated, // Timestamp de última actualización
     @JsonKey(name: 'created_at') DateTime? createdAt,
     @JsonKey(name: 'updated_at') DateTime? updatedAt,
@@ -40,5 +40,28 @@ extension DiaryEntryExtension on DiaryEntry {
       updatedAt: DateTime.now(),
       synced: false,
     );
+  }
+
+  /// Mapa para Firestore / backend remoto.
+  /// `audio_file_path` puede guardarse solo en local si no existe en el índice remoto.
+  Map<String, dynamic> toRemoteMap() {
+    final map = <String, dynamic>{
+      'id': id,
+      'user_id': userId,
+      'date': date,
+      'title': title,
+      'content': content,
+      'last_updated': lastUpdated,
+      'synced': synced,
+      'audio_markers': audioMarkers.map((m) => m.toJson()).toList(),
+      'draw_strokes': drawStrokes.map((s) => s.toJson()).toList(),
+    };
+    if (createdAt != null) {
+      map['created_at'] = createdAt!.toUtc().toIso8601String();
+    }
+    if (updatedAt != null) {
+      map['updated_at'] = updatedAt!.toUtc().toIso8601String();
+    }
+    return map;
   }
 }

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../core/di/service_locator.dart';
@@ -36,11 +37,15 @@ class AuthViewModel extends StateNotifier<AuthState> {
   final AuthRepository _authRepository;
 
   AuthViewModel(this._authRepository) : super(const AuthState()) {
-    // Escuchar cambios en el estado de autenticación
-    _authRepository.authStateChanges.listen((authState) {
+    final current = _authRepository.currentUser;
+    if (current != null) {
+      state = state.copyWith(isAuthenticated: true, userId: current.uid);
+    }
+
+    _authRepository.authStateChanges.listen((User? user) {
       state = state.copyWith(
-        isAuthenticated: authState.session != null,
-        userId: authState.session?.user.id ?? '',
+        isAuthenticated: user != null,
+        userId: user?.uid ?? '',
       );
     });
   }

@@ -1,0 +1,5 @@
+node_modules/
+.env
+migracion.env
+serviceAccountKey.json
+*-firebase-adminsdk-*.json

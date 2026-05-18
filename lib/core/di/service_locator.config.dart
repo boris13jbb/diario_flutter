@@ -13,7 +13,7 @@ import 'package:diario_flutter/core/di/injectable_config.dart' as _i232;
 import 'package:diario_flutter/data/local/dao/diary_dao.dart' as _i827;
 import 'package:diario_flutter/data/local/database.dart' as _i588;
 import 'package:diario_flutter/data/remote/auth_service.dart' as _i217;
-import 'package:diario_flutter/data/remote/supabase_diary_service.dart'
+import 'package:diario_flutter/data/remote/firestore_diary_service.dart'
     as _i544;
 import 'package:diario_flutter/data/repositories/auth_repository.dart' as _i149;
 import 'package:diario_flutter/data/repositories/diary_repository.dart'
@@ -30,8 +30,8 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final injectableConfig = _$InjectableConfig();
     gh.lazySingleton<_i217.AuthService>(() => injectableConfig.authService);
-    gh.lazySingleton<_i544.SupabaseDiaryService>(
-      () => injectableConfig.supabaseDiaryService,
+    gh.lazySingleton<_i544.FirestoreDiaryService>(
+      () => injectableConfig.firestoreDiaryService,
     );
     gh.lazySingleton<_i588.AppDatabase>(() => injectableConfig.appDatabase);
     gh.lazySingleton<_i827.DiaryDao>(
@@ -40,7 +40,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i971.DiaryRepository>(
       () => _i971.DiaryRepository(
         gh<_i827.DiaryDao>(),
-        gh<_i544.SupabaseDiaryService>(),
+        gh<_i544.FirestoreDiaryService>(),
       ),
     );
     gh.lazySingleton<_i149.AuthRepository>(

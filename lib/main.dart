@@ -1,30 +1,53 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/theme/app_theme.dart';
 import 'core/di/service_locator.dart';
 import 'core/navigation/app_router.dart';
+import 'firebase_options.dart';
+import 'presentation/viewmodels/diary_viewmodel.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Inicializar Supabase
-  await Supabase.initialize(
-    url: 'https://swirjlhuxcpcfuvketcv.supabase.co',
-    anonKey: 'sb_publishable_cVlswOY8djMMTWsdV222Hw_hJRUOmba',
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
   );
-  
-  // Inicializar inyección de dependencias
+
   await setupServiceLocator();
-  
+
   runApp(const ProviderScope(child: DiarioApp()));
 }
 
-class DiarioApp extends ConsumerWidget {
+class DiarioApp extends ConsumerStatefulWidget {
   const DiarioApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DiarioApp> createState() => _DiarioAppState();
+}
+
+class _DiarioAppState extends ConsumerState<DiarioApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(diaryViewModelProvider.notifier).onAppResumed();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Diario de Aprendizaje',
       debugShowCheckedModeBanner: false,

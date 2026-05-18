@@ -5,21 +5,43 @@ import 'fluent_colors.dart';
 import '../viewmodels/diary_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../../core/constants/app_routes.dart';
+import '../../core/constants/diary_list_filter.dart';
+import '../../domain/models/diary_entry.dart';
 
 /// Barra lateral principal estilo Microsoft Fluent
-class FluentSidebar extends ConsumerWidget {
+class FluentSidebar extends ConsumerStatefulWidget {
   final String? selectedEntryId;
   
   const FluentSidebar({super.key, this.selectedEntryId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FluentSidebar> createState() => _FluentSidebarState();
+}
+
+class _FluentSidebarState extends ConsumerState<FluentSidebar> {
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final diaryState = ref.watch(diaryViewModelProvider);
+    final diaryNotifier = ref.read(diaryViewModelProvider.notifier);
+    final visibleEntries = diaryNotifier.filteredEntries;
     final authState = ref.watch(authViewModelProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     final sidebarBg = isDark ? FluentColors.sidebarDark : FluentColors.sidebarLight;
-    final textColor = isDark ? FluentColors.textPrimaryDark : FluentColors.textPrimaryLight;
     final secondaryTextColor = isDark ? FluentColors.textSecondaryDark : FluentColors.textSecondaryLight;
     
     return Container(
@@ -44,19 +66,21 @@ class FluentSidebar extends ConsumerWidget {
           const SizedBox(height: FluentSpacing.sm),
           
           // Filtros rápidos
-          _buildQuickFilters(context, ref, isDark, secondaryTextColor),
+          _buildQuickFilters(context, ref, diaryState.listFilter, isDark, secondaryTextColor),
           
           const SizedBox(height: FluentSpacing.sm),
           
           // Lista de entradas
           Expanded(
             child: diaryState.entries.isEmpty
-                ? _buildEmptyList(isDark, secondaryTextColor)
-                : _buildEntryList(context, ref, diaryState.entries, isDark),
+                ? _buildEmptyList(isDark, secondaryTextColor, DiaryListFilter.all)
+                : visibleEntries.isEmpty
+                    ? _buildEmptyList(isDark, secondaryTextColor, diaryState.listFilter)
+                    : _buildEntryList(context, ref, visibleEntries, isDark, diaryState.favoriteIds),
           ),
           
           // Footer con info de sync y usuario
-          _buildFooter(context, ref, isDark, secondaryTextColor, authState),
+          _buildFooter(context, ref, isDark, secondaryTextColor, authState, diaryState),
         ],
       ),
     );
@@ -124,6 +148,9 @@ class FluentSidebar extends ConsumerWidget {
           ),
         ),
         child: TextField(
+          controller: _searchController,
+          onChanged: (value) =>
+              ref.read(diaryViewModelProvider.notifier).setSearchQuery(value),
           decoration: InputDecoration(
             hintText: 'Buscar notas...',
             hintStyle: TextStyle(
@@ -153,9 +180,12 @@ class FluentSidebar extends ConsumerWidget {
   Widget _buildQuickFilters(
     BuildContext context,
     WidgetRef ref,
+    DiaryListFilter activeFilter,
     bool isDark,
     Color secondaryTextColor,
   ) {
+    final notifier = ref.read(diaryViewModelProvider.notifier);
+
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: FluentSpacing.lg,
@@ -164,15 +194,39 @@ class FluentSidebar extends ConsumerWidget {
       child: Row(
         children: [
           Expanded(
-            child: _buildFilterChip(context, 'Todas', Icons.list, isDark, secondaryTextColor, true),
+            child: _buildFilterChip(
+              context,
+              DiaryListFilter.all,
+              Icons.list,
+              isDark,
+              secondaryTextColor,
+              activeFilter == DiaryListFilter.all,
+              () => notifier.setListFilter(DiaryListFilter.all),
+            ),
           ),
           const SizedBox(width: 4),
           Expanded(
-            child: _buildFilterChip(context, 'Favoritos', Icons.star_border, isDark, secondaryTextColor, false),
+            child: _buildFilterChip(
+              context,
+              DiaryListFilter.favorites,
+              Icons.star_border,
+              isDark,
+              secondaryTextColor,
+              activeFilter == DiaryListFilter.favorites,
+              () => notifier.setListFilter(DiaryListFilter.favorites),
+            ),
           ),
           const SizedBox(width: 4),
           Expanded(
-            child: _buildFilterChip(context, 'Recientes', Icons.access_time, isDark, secondaryTextColor, false),
+            child: _buildFilterChip(
+              context,
+              DiaryListFilter.recent,
+              Icons.access_time,
+              isDark,
+              secondaryTextColor,
+              activeFilter == DiaryListFilter.recent,
+              () => notifier.setListFilter(DiaryListFilter.recent),
+            ),
           ),
         ],
       ),
@@ -181,12 +235,14 @@ class FluentSidebar extends ConsumerWidget {
 
   Widget _buildFilterChip(
     BuildContext context,
-    String label,
+    DiaryListFilter filter,
     IconData icon,
     bool isDark,
     Color secondaryTextColor,
     bool isSelected,
+    VoidCallback onTap,
   ) {
+    final label = filter.label;
     final bgColor = isSelected
         ? (isDark ? FluentColors.sidebarItemSelectedDark : FluentColors.sidebarItemSelectedLight)
         : Colors.transparent;
@@ -196,9 +252,7 @@ class FluentSidebar extends ConsumerWidget {
         : secondaryTextColor;
     
     return GestureDetector(
-      onTap: () {
-        // TODO: Implementar filtrado
-      },
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: 8,
@@ -235,8 +289,9 @@ class FluentSidebar extends ConsumerWidget {
   Widget _buildEntryList(
     BuildContext context,
     WidgetRef ref,
-    List<dynamic> entries,
+    List<DiaryEntry> entries,
     bool isDark,
+    Set<String> favoriteIds,
   ) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(
@@ -246,9 +301,16 @@ class FluentSidebar extends ConsumerWidget {
       itemCount: entries.length,
       itemBuilder: (context, index) {
         final entry = entries[index];
-        final isSelected = entry.id == selectedEntryId;
+        final isSelected = entry.id == widget.selectedEntryId;
         
-        return _buildEntryItem(context, ref, entry, isSelected, isDark);
+        return _buildEntryItem(
+          context,
+          ref,
+          entry,
+          isSelected,
+          isDark,
+          favoriteIds.contains(entry.id),
+        );
       },
     );
   }
@@ -256,9 +318,10 @@ class FluentSidebar extends ConsumerWidget {
   Widget _buildEntryItem(
     BuildContext context,
     WidgetRef ref,
-    dynamic entry,
+    DiaryEntry entry,
     bool isSelected,
     bool isDark,
+    bool isFavorite,
   ) {
     final bgColor = isSelected
         ? (isDark ? FluentColors.sidebarItemSelectedDark : FluentColors.sidebarItemSelectedLight)
@@ -278,6 +341,9 @@ class FluentSidebar extends ConsumerWidget {
           child: GestureDetector(
             onTap: () {
               context.push('${AppRoutes.entryDetail}/${entry.id}');
+            },
+            onLongPress: () {
+              ref.read(diaryViewModelProvider.notifier).toggleFavorite(entry.id);
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
@@ -310,6 +376,15 @@ class FluentSidebar extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      if (isFavorite)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 4),
+                          child: Icon(
+                            Icons.star,
+                            size: 14,
+                            color: FluentColors.warning,
+                          ),
+                        ),
                       // Indicador de sincronización
                       if (entry.synced)
                         Icon(
@@ -372,34 +447,61 @@ class FluentSidebar extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyList(bool isDark, Color secondaryTextColor) {
+  Widget _buildEmptyList(bool isDark, Color secondaryTextColor, DiaryListFilter filter) {
+    final IconData icon;
+    final String title;
+    final String subtitle;
+
+    switch (filter) {
+      case DiaryListFilter.favorites:
+        icon = Icons.star_border;
+        title = 'Sin favoritos';
+        subtitle = 'Abre una nota y pulsa la estrella, o mantén pulsada una nota en la lista';
+        break;
+      case DiaryListFilter.recent:
+        icon = Icons.access_time;
+        title = 'Sin notas recientes';
+        subtitle = 'No hay notas editadas en los últimos $kRecentNotesDays días';
+        break;
+      case DiaryListFilter.all:
+        icon = Icons.note_add;
+        title = 'No hay notas aún';
+        subtitle = 'Crea tu primera entrada';
+        break;
+    }
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.note_add,
-            size: 48,
-            color: secondaryTextColor.withOpacity(0.5),
-          ),
-          const SizedBox(height: FluentSpacing.md),
-          Text(
-            'No hay notas aún',
-            style: TextStyle(
-              fontSize: 14,
-              color: secondaryTextColor,
-              fontWeight: FontWeight.w500,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: FluentSpacing.lg),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 48,
+              color: secondaryTextColor.withOpacity(0.5),
             ),
-          ),
-          const SizedBox(height: FluentSpacing.xs),
-          Text(
-            'Crea tu primera entrada',
-            style: TextStyle(
-              fontSize: 12,
-              color: secondaryTextColor.withOpacity(0.7),
+            const SizedBox(height: FluentSpacing.md),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: secondaryTextColor,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: FluentSpacing.xs),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: secondaryTextColor.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -410,6 +512,7 @@ class FluentSidebar extends ConsumerWidget {
     bool isDark,
     Color secondaryTextColor,
     dynamic authState,
+    DiaryState diaryState,
   ) {
     return Container(
       padding: const EdgeInsets.all(FluentSpacing.md),
@@ -423,32 +526,41 @@ class FluentSidebar extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          // Indicador de conexión
-          StreamBuilder<bool>(
-            stream: _connectionStream(),
-            builder: (context, snapshot) {
-              final isConnected = snapshot.data ?? false;
-              return Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isConnected ? FluentColors.success : FluentColors.error,
-                    ),
+          Row(
+            children: [
+              if (diaryState.isSyncing)
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: FluentColors.primary,
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    isConnected ? 'En línea' : 'Sin conexión',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: secondaryTextColor,
-                    ),
+                )
+              else
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: diaryState.lastSyncedAt != null
+                        ? FluentColors.success
+                        : secondaryTextColor,
                   ),
-                ],
-              );
-            },
+                ),
+              const SizedBox(width: 6),
+              Text(
+                diaryState.isSyncing
+                    ? 'Sincronizando...'
+                    : diaryState.lastSyncedAt != null
+                        ? 'Sincronizado'
+                        : 'En línea',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: secondaryTextColor,
+                ),
+              ),
+            ],
           ),
           const Spacer(),
           // Avatar del usuario
@@ -470,11 +582,6 @@ class FluentSidebar extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  Stream<bool> _connectionStream() {
-    // TODO: Implementar stream de conexión real
-    return Stream.value(true);
   }
 
   String _getUserInitials(String? userId) {

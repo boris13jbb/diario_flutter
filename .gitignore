@@ -39,6 +39,12 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# Migración Supabase → Firebase (secretos)
+tools/migrate_supabase_to_firestore/node_modules/
+tools/migrate_supabase_to_firestore/.env
+tools/migrate_supabase_to_firestore/serviceAccountKey.json
+tools/migrate_supabase_to_firestore/*-firebase-adminsdk-*.json
+
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile

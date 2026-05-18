@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "519022808097",
+    "project_id": "diario-notaspro",
+    "storage_bucket": "diario-notaspro.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:519022808097:android:b9ea180ccd14565e80a760",
+        "android_client_info": {
+          "package_name": "com.skyrunner.diario_flutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDt4LRfy8j1n5U7W1zKqVmqQrubUI6AHGI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
