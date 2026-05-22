@@ -1,5 +1,6 @@
 import 'package:injectable/injectable.dart';
 import '../../data/remote/auth_service.dart';
+import '../../data/remote/firestore_category_service.dart';
 import '../../data/remote/firestore_diary_service.dart';
 import '../../data/local/database.dart';
 import '../../data/local/dao/diary_dao.dart';
@@ -13,6 +14,10 @@ abstract class InjectableConfig {
 
   @lazySingleton
   FirestoreDiaryService get firestoreDiaryService => FirestoreDiaryService();
+
+  @lazySingleton
+  FirestoreCategoryService get firestoreCategoryService =>
+      FirestoreCategoryService();
 
   // Registro de AppDatabase
   @lazySingleton

@@ -33,8 +33,10 @@ mixin _$DiaryEntry {
   List<DrawStroke> get drawStrokes => throw _privateConstructorUsedError; // Trazos de dibujo
   @JsonKey(name: 'audio_file_path')
   String? get audioFilePath => throw _privateConstructorUsedError; // Ruta al archivo de audio grabado
+  @JsonKey(name: 'category_id')
+  String? get categoryId => throw _privateConstructorUsedError;
   bool get synced =>
-      throw _privateConstructorUsedError; // Estado de sincronización con Supabase
+      throw _privateConstructorUsedError; // Estado de sincronización con Firestore
   @JsonKey(name: 'last_updated')
   int get lastUpdated => throw _privateConstructorUsedError; // Timestamp de última actualización
   @JsonKey(name: 'created_at')
@@ -70,6 +72,7 @@ abstract class $DiaryEntryCopyWith<$Res> {
     @JsonKey(name: 'draw_strokes', defaultValue: [])
     List<DrawStroke> drawStrokes,
     @JsonKey(name: 'audio_file_path') String? audioFilePath,
+    @JsonKey(name: 'category_id') String? categoryId,
     bool synced,
     @JsonKey(name: 'last_updated') int lastUpdated,
     @JsonKey(name: 'created_at') DateTime? createdAt,
@@ -100,6 +103,7 @@ class _$DiaryEntryCopyWithImpl<$Res, $Val extends DiaryEntry>
     Object? audioMarkers = null,
     Object? drawStrokes = null,
     Object? audioFilePath = freezed,
+    Object? categoryId = freezed,
     Object? synced = null,
     Object? lastUpdated = null,
     Object? createdAt = freezed,
@@ -138,6 +142,10 @@ class _$DiaryEntryCopyWithImpl<$Res, $Val extends DiaryEntry>
             audioFilePath: freezed == audioFilePath
                 ? _value.audioFilePath
                 : audioFilePath // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            categoryId: freezed == categoryId
+                ? _value.categoryId
+                : categoryId // ignore: cast_nullable_to_non_nullable
                       as String?,
             synced: null == synced
                 ? _value.synced
@@ -181,6 +189,7 @@ abstract class _$$DiaryEntryImplCopyWith<$Res>
     @JsonKey(name: 'draw_strokes', defaultValue: [])
     List<DrawStroke> drawStrokes,
     @JsonKey(name: 'audio_file_path') String? audioFilePath,
+    @JsonKey(name: 'category_id') String? categoryId,
     bool synced,
     @JsonKey(name: 'last_updated') int lastUpdated,
     @JsonKey(name: 'created_at') DateTime? createdAt,
@@ -210,6 +219,7 @@ class __$$DiaryEntryImplCopyWithImpl<$Res>
     Object? audioMarkers = null,
     Object? drawStrokes = null,
     Object? audioFilePath = freezed,
+    Object? categoryId = freezed,
     Object? synced = null,
     Object? lastUpdated = null,
     Object? createdAt = freezed,
@@ -249,6 +259,10 @@ class __$$DiaryEntryImplCopyWithImpl<$Res>
             ? _value.audioFilePath
             : audioFilePath // ignore: cast_nullable_to_non_nullable
                   as String?,
+        categoryId: freezed == categoryId
+            ? _value.categoryId
+            : categoryId // ignore: cast_nullable_to_non_nullable
+                  as String?,
         synced: null == synced
             ? _value.synced
             : synced // ignore: cast_nullable_to_non_nullable
@@ -284,6 +298,7 @@ class _$DiaryEntryImpl implements _DiaryEntry {
     @JsonKey(name: 'draw_strokes', defaultValue: [])
     final List<DrawStroke> drawStrokes = const [],
     @JsonKey(name: 'audio_file_path') this.audioFilePath,
+    @JsonKey(name: 'category_id') this.categoryId,
     this.synced = false,
     @JsonKey(name: 'last_updated') required this.lastUpdated,
     @JsonKey(name: 'created_at') this.createdAt,
@@ -332,9 +347,12 @@ class _$DiaryEntryImpl implements _DiaryEntry {
   final String? audioFilePath;
   // Ruta al archivo de audio grabado
   @override
+  @JsonKey(name: 'category_id')
+  final String? categoryId;
+  @override
   @JsonKey()
   final bool synced;
-  // Estado de sincronización con Supabase
+  // Estado de sincronización con Firestore
   @override
   @JsonKey(name: 'last_updated')
   final int lastUpdated;
@@ -348,7 +366,7 @@ class _$DiaryEntryImpl implements _DiaryEntry {
 
   @override
   String toString() {
-    return 'DiaryEntry(id: $id, userId: $userId, date: $date, title: $title, content: $content, audioMarkers: $audioMarkers, drawStrokes: $drawStrokes, audioFilePath: $audioFilePath, synced: $synced, lastUpdated: $lastUpdated, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'DiaryEntry(id: $id, userId: $userId, date: $date, title: $title, content: $content, audioMarkers: $audioMarkers, drawStrokes: $drawStrokes, audioFilePath: $audioFilePath, categoryId: $categoryId, synced: $synced, lastUpdated: $lastUpdated, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -371,6 +389,8 @@ class _$DiaryEntryImpl implements _DiaryEntry {
             ) &&
             (identical(other.audioFilePath, audioFilePath) ||
                 other.audioFilePath == audioFilePath) &&
+            (identical(other.categoryId, categoryId) ||
+                other.categoryId == categoryId) &&
             (identical(other.synced, synced) || other.synced == synced) &&
             (identical(other.lastUpdated, lastUpdated) ||
                 other.lastUpdated == lastUpdated) &&
@@ -392,6 +412,7 @@ class _$DiaryEntryImpl implements _DiaryEntry {
     const DeepCollectionEquality().hash(_audioMarkers),
     const DeepCollectionEquality().hash(_drawStrokes),
     audioFilePath,
+    categoryId,
     synced,
     lastUpdated,
     createdAt,
@@ -424,6 +445,7 @@ abstract class _DiaryEntry implements DiaryEntry {
     @JsonKey(name: 'draw_strokes', defaultValue: [])
     final List<DrawStroke> drawStrokes,
     @JsonKey(name: 'audio_file_path') final String? audioFilePath,
+    @JsonKey(name: 'category_id') final String? categoryId,
     final bool synced,
     @JsonKey(name: 'last_updated') required final int lastUpdated,
     @JsonKey(name: 'created_at') final DateTime? createdAt,
@@ -454,7 +476,10 @@ abstract class _DiaryEntry implements DiaryEntry {
   @JsonKey(name: 'audio_file_path')
   String? get audioFilePath; // Ruta al archivo de audio grabado
   @override
-  bool get synced; // Estado de sincronización con Supabase
+  @JsonKey(name: 'category_id')
+  String? get categoryId;
+  @override
+  bool get synced; // Estado de sincronización con Firestore
   @override
   @JsonKey(name: 'last_updated')
   int get lastUpdated; // Timestamp de última actualización

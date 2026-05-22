@@ -17,6 +17,7 @@ class DiaryEntry with _$DiaryEntry {
     @JsonKey(name: 'audio_markers', defaultValue: []) @Default([]) List<AudioMarker> audioMarkers, // Marcadores de audio
     @JsonKey(name: 'draw_strokes', defaultValue: []) @Default([]) List<DrawStroke> drawStrokes, // Trazos de dibujo
     @JsonKey(name: 'audio_file_path') String? audioFilePath, // Ruta al archivo de audio grabado
+    @JsonKey(name: 'category_id') String? categoryId,
     @Default(false) bool synced, // Estado de sincronización con Firestore
     @JsonKey(name: 'last_updated') required int lastUpdated, // Timestamp de última actualización
     @JsonKey(name: 'created_at') DateTime? createdAt,
@@ -56,6 +57,9 @@ extension DiaryEntryExtension on DiaryEntry {
       'audio_markers': audioMarkers.map((m) => m.toJson()).toList(),
       'draw_strokes': drawStrokes.map((s) => s.toJson()).toList(),
     };
+    if (categoryId != null && categoryId!.isNotEmpty) {
+      map['category_id'] = categoryId;
+    }
     if (createdAt != null) {
       map['created_at'] = createdAt!.toUtc().toIso8601String();
     }

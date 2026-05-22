@@ -8,6 +8,7 @@ class DiaryEntryFactory {
     required String date,
     String title = '',
     String content = '',
+    String? categoryId,
   }) {
     final now = DateTime.now();
     return DiaryEntry(
@@ -18,6 +19,7 @@ class DiaryEntryFactory {
       content: content,
       audioMarkers: [],
       drawStrokes: [],
+      categoryId: categoryId,
       synced: false,
       lastUpdated: now.millisecondsSinceEpoch,
       createdAt: now,

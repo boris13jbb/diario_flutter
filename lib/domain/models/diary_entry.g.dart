@@ -24,6 +24,7 @@ _$DiaryEntryImpl _$$DiaryEntryImplFromJson(Map<String, dynamic> json) =>
               .toList() ??
           [],
       audioFilePath: json['audio_file_path'] as String?,
+      categoryId: json['category_id'] as String?,
       synced: json['synced'] as bool? ?? false,
       lastUpdated: (json['last_updated'] as num).toInt(),
       createdAt: json['created_at'] == null
@@ -44,6 +45,7 @@ Map<String, dynamic> _$$DiaryEntryImplToJson(_$DiaryEntryImpl instance) =>
       'audio_markers': instance.audioMarkers,
       'draw_strokes': instance.drawStrokes,
       'audio_file_path': instance.audioFilePath,
+      'category_id': instance.categoryId,
       'synced': instance.synced,
       'last_updated': instance.lastUpdated,
       'created_at': instance.createdAt?.toIso8601String(),

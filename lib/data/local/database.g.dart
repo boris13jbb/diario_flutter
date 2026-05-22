@@ -91,6 +91,17 @@ class $DiaryEntriesTable extends DiaryEntries
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+    'category_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
   @override
   late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
@@ -147,6 +158,7 @@ class $DiaryEntriesTable extends DiaryEntries
     audioMarkers,
     drawStrokes,
     audioFilePath,
+    categoryId,
     synced,
     lastUpdated,
     createdAt,
@@ -228,6 +240,12 @@ class $DiaryEntriesTable extends DiaryEntries
         ),
       );
     }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
     if (data.containsKey('synced')) {
       context.handle(
         _syncedMeta,
@@ -298,6 +316,10 @@ class $DiaryEntriesTable extends DiaryEntries
         DriftSqlType.string,
         data['${effectivePrefix}audio_file_path'],
       ),
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_id'],
+      ),
       synced: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}synced'],
@@ -332,6 +354,7 @@ class DiaryEntry extends DataClass implements Insertable<DiaryEntry> {
   final String audioMarkers;
   final String drawStrokes;
   final String? audioFilePath;
+  final String? categoryId;
   final bool synced;
   final int lastUpdated;
   final DateTime? createdAt;
@@ -345,6 +368,7 @@ class DiaryEntry extends DataClass implements Insertable<DiaryEntry> {
     required this.audioMarkers,
     required this.drawStrokes,
     this.audioFilePath,
+    this.categoryId,
     required this.synced,
     required this.lastUpdated,
     this.createdAt,
@@ -362,6 +386,9 @@ class DiaryEntry extends DataClass implements Insertable<DiaryEntry> {
     map['draw_strokes'] = Variable<String>(drawStrokes);
     if (!nullToAbsent || audioFilePath != null) {
       map['audio_file_path'] = Variable<String>(audioFilePath);
+    }
+    if (!nullToAbsent || categoryId != null) {
+      map['category_id'] = Variable<String>(categoryId);
     }
     map['synced'] = Variable<bool>(synced);
     map['last_updated'] = Variable<int>(lastUpdated);
@@ -386,6 +413,9 @@ class DiaryEntry extends DataClass implements Insertable<DiaryEntry> {
       audioFilePath: audioFilePath == null && nullToAbsent
           ? const Value.absent()
           : Value(audioFilePath),
+      categoryId: categoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryId),
       synced: Value(synced),
       lastUpdated: Value(lastUpdated),
       createdAt: createdAt == null && nullToAbsent
@@ -411,6 +441,7 @@ class DiaryEntry extends DataClass implements Insertable<DiaryEntry> {
       audioMarkers: serializer.fromJson<String>(json['audioMarkers']),
       drawStrokes: serializer.fromJson<String>(json['drawStrokes']),
       audioFilePath: serializer.fromJson<String?>(json['audioFilePath']),
+      categoryId: serializer.fromJson<String?>(json['categoryId']),
       synced: serializer.fromJson<bool>(json['synced']),
       lastUpdated: serializer.fromJson<int>(json['lastUpdated']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
@@ -429,6 +460,7 @@ class DiaryEntry extends DataClass implements Insertable<DiaryEntry> {
       'audioMarkers': serializer.toJson<String>(audioMarkers),
       'drawStrokes': serializer.toJson<String>(drawStrokes),
       'audioFilePath': serializer.toJson<String?>(audioFilePath),
+      'categoryId': serializer.toJson<String?>(categoryId),
       'synced': serializer.toJson<bool>(synced),
       'lastUpdated': serializer.toJson<int>(lastUpdated),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
@@ -445,6 +477,7 @@ class DiaryEntry extends DataClass implements Insertable<DiaryEntry> {
     String? audioMarkers,
     String? drawStrokes,
     Value<String?> audioFilePath = const Value.absent(),
+    Value<String?> categoryId = const Value.absent(),
     bool? synced,
     int? lastUpdated,
     Value<DateTime?> createdAt = const Value.absent(),
@@ -460,6 +493,7 @@ class DiaryEntry extends DataClass implements Insertable<DiaryEntry> {
     audioFilePath: audioFilePath.present
         ? audioFilePath.value
         : this.audioFilePath,
+    categoryId: categoryId.present ? categoryId.value : this.categoryId,
     synced: synced ?? this.synced,
     lastUpdated: lastUpdated ?? this.lastUpdated,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
@@ -481,6 +515,9 @@ class DiaryEntry extends DataClass implements Insertable<DiaryEntry> {
       audioFilePath: data.audioFilePath.present
           ? data.audioFilePath.value
           : this.audioFilePath,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
       synced: data.synced.present ? data.synced.value : this.synced,
       lastUpdated: data.lastUpdated.present
           ? data.lastUpdated.value
@@ -501,6 +538,7 @@ class DiaryEntry extends DataClass implements Insertable<DiaryEntry> {
           ..write('audioMarkers: $audioMarkers, ')
           ..write('drawStrokes: $drawStrokes, ')
           ..write('audioFilePath: $audioFilePath, ')
+          ..write('categoryId: $categoryId, ')
           ..write('synced: $synced, ')
           ..write('lastUpdated: $lastUpdated, ')
           ..write('createdAt: $createdAt, ')
@@ -519,6 +557,7 @@ class DiaryEntry extends DataClass implements Insertable<DiaryEntry> {
     audioMarkers,
     drawStrokes,
     audioFilePath,
+    categoryId,
     synced,
     lastUpdated,
     createdAt,
@@ -536,6 +575,7 @@ class DiaryEntry extends DataClass implements Insertable<DiaryEntry> {
           other.audioMarkers == this.audioMarkers &&
           other.drawStrokes == this.drawStrokes &&
           other.audioFilePath == this.audioFilePath &&
+          other.categoryId == this.categoryId &&
           other.synced == this.synced &&
           other.lastUpdated == this.lastUpdated &&
           other.createdAt == this.createdAt &&
@@ -551,6 +591,7 @@ class DiaryEntriesCompanion extends UpdateCompanion<DiaryEntry> {
   final Value<String> audioMarkers;
   final Value<String> drawStrokes;
   final Value<String?> audioFilePath;
+  final Value<String?> categoryId;
   final Value<bool> synced;
   final Value<int> lastUpdated;
   final Value<DateTime?> createdAt;
@@ -565,6 +606,7 @@ class DiaryEntriesCompanion extends UpdateCompanion<DiaryEntry> {
     this.audioMarkers = const Value.absent(),
     this.drawStrokes = const Value.absent(),
     this.audioFilePath = const Value.absent(),
+    this.categoryId = const Value.absent(),
     this.synced = const Value.absent(),
     this.lastUpdated = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -580,6 +622,7 @@ class DiaryEntriesCompanion extends UpdateCompanion<DiaryEntry> {
     this.audioMarkers = const Value.absent(),
     this.drawStrokes = const Value.absent(),
     this.audioFilePath = const Value.absent(),
+    this.categoryId = const Value.absent(),
     this.synced = const Value.absent(),
     required int lastUpdated,
     this.createdAt = const Value.absent(),
@@ -600,6 +643,7 @@ class DiaryEntriesCompanion extends UpdateCompanion<DiaryEntry> {
     Expression<String>? audioMarkers,
     Expression<String>? drawStrokes,
     Expression<String>? audioFilePath,
+    Expression<String>? categoryId,
     Expression<bool>? synced,
     Expression<int>? lastUpdated,
     Expression<DateTime>? createdAt,
@@ -615,6 +659,7 @@ class DiaryEntriesCompanion extends UpdateCompanion<DiaryEntry> {
       if (audioMarkers != null) 'audio_markers': audioMarkers,
       if (drawStrokes != null) 'draw_strokes': drawStrokes,
       if (audioFilePath != null) 'audio_file_path': audioFilePath,
+      if (categoryId != null) 'category_id': categoryId,
       if (synced != null) 'synced': synced,
       if (lastUpdated != null) 'last_updated': lastUpdated,
       if (createdAt != null) 'created_at': createdAt,
@@ -632,6 +677,7 @@ class DiaryEntriesCompanion extends UpdateCompanion<DiaryEntry> {
     Value<String>? audioMarkers,
     Value<String>? drawStrokes,
     Value<String?>? audioFilePath,
+    Value<String?>? categoryId,
     Value<bool>? synced,
     Value<int>? lastUpdated,
     Value<DateTime?>? createdAt,
@@ -647,6 +693,7 @@ class DiaryEntriesCompanion extends UpdateCompanion<DiaryEntry> {
       audioMarkers: audioMarkers ?? this.audioMarkers,
       drawStrokes: drawStrokes ?? this.drawStrokes,
       audioFilePath: audioFilePath ?? this.audioFilePath,
+      categoryId: categoryId ?? this.categoryId,
       synced: synced ?? this.synced,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       createdAt: createdAt ?? this.createdAt,
@@ -682,6 +729,9 @@ class DiaryEntriesCompanion extends UpdateCompanion<DiaryEntry> {
     if (audioFilePath.present) {
       map['audio_file_path'] = Variable<String>(audioFilePath.value);
     }
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
+    }
     if (synced.present) {
       map['synced'] = Variable<bool>(synced.value);
     }
@@ -711,6 +761,7 @@ class DiaryEntriesCompanion extends UpdateCompanion<DiaryEntry> {
           ..write('audioMarkers: $audioMarkers, ')
           ..write('drawStrokes: $drawStrokes, ')
           ..write('audioFilePath: $audioFilePath, ')
+          ..write('categoryId: $categoryId, ')
           ..write('synced: $synced, ')
           ..write('lastUpdated: $lastUpdated, ')
           ..write('createdAt: $createdAt, ')
@@ -743,6 +794,7 @@ typedef $$DiaryEntriesTableCreateCompanionBuilder =
       Value<String> audioMarkers,
       Value<String> drawStrokes,
       Value<String?> audioFilePath,
+      Value<String?> categoryId,
       Value<bool> synced,
       required int lastUpdated,
       Value<DateTime?> createdAt,
@@ -759,6 +811,7 @@ typedef $$DiaryEntriesTableUpdateCompanionBuilder =
       Value<String> audioMarkers,
       Value<String> drawStrokes,
       Value<String?> audioFilePath,
+      Value<String?> categoryId,
       Value<bool> synced,
       Value<int> lastUpdated,
       Value<DateTime?> createdAt,
@@ -812,6 +865,11 @@ class $$DiaryEntriesTableFilterComposer
 
   ColumnFilters<String> get audioFilePath => $composableBuilder(
     column: $table.audioFilePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -885,6 +943,11 @@ class $$DiaryEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get synced => $composableBuilder(
     column: $table.synced,
     builder: (column) => ColumnOrderings(column),
@@ -945,6 +1008,11 @@ class $$DiaryEntriesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get synced =>
       $composableBuilder(column: $table.synced, builder: (column) => column);
 
@@ -999,6 +1067,7 @@ class $$DiaryEntriesTableTableManager
                 Value<String> audioMarkers = const Value.absent(),
                 Value<String> drawStrokes = const Value.absent(),
                 Value<String?> audioFilePath = const Value.absent(),
+                Value<String?> categoryId = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 Value<int> lastUpdated = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
@@ -1013,6 +1082,7 @@ class $$DiaryEntriesTableTableManager
                 audioMarkers: audioMarkers,
                 drawStrokes: drawStrokes,
                 audioFilePath: audioFilePath,
+                categoryId: categoryId,
                 synced: synced,
                 lastUpdated: lastUpdated,
                 createdAt: createdAt,
@@ -1029,6 +1099,7 @@ class $$DiaryEntriesTableTableManager
                 Value<String> audioMarkers = const Value.absent(),
                 Value<String> drawStrokes = const Value.absent(),
                 Value<String?> audioFilePath = const Value.absent(),
+                Value<String?> categoryId = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 required int lastUpdated,
                 Value<DateTime?> createdAt = const Value.absent(),
@@ -1043,6 +1114,7 @@ class $$DiaryEntriesTableTableManager
                 audioMarkers: audioMarkers,
                 drawStrokes: drawStrokes,
                 audioFilePath: audioFilePath,
+                categoryId: categoryId,
                 synced: synced,
                 lastUpdated: lastUpdated,
                 createdAt: createdAt,

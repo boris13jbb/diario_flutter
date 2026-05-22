@@ -14,15 +14,41 @@ class FirestoreDiaryService {
 
   Future<List<DiaryEntry>> getAllEntries(String userId) async {
     try {
-      final snapshot = await _collection
-          .where('user_id', isEqualTo: userId)
-          .orderBy('date', descending: true)
-          .get();
-
-      return snapshot.docs.map(FirestoreDiaryMapper.fromDocument).toList();
+      return await _fetchEntriesForUser(userId, withDateOrder: true);
+    } on FirebaseException catch (e) {
+      // Índice compuesto ausente: reintenta sin orderBy.
+      if (e.code == 'failed-precondition') {
+        return _fetchEntriesForUser(userId, withDateOrder: false);
+      }
+      throw Exception('Error al obtener entradas: ${e.message ?? e.code}');
     } catch (e) {
       throw Exception('Error al obtener entradas: $e');
     }
+  }
+
+  Future<List<DiaryEntry>> _fetchEntriesForUser(
+    String userId, {
+    required bool withDateOrder,
+  }) async {
+    Query<Map<String, dynamic>> query =
+        _collection.where('user_id', isEqualTo: userId);
+    if (withDateOrder) {
+      query = query.orderBy('date', descending: true);
+    }
+
+    final snapshot = await query.get();
+    final entries = <DiaryEntry>[];
+    for (final doc in snapshot.docs) {
+      final entry = FirestoreDiaryMapper.tryFromDocument(doc);
+      if (entry != null) {
+        entries.add(entry);
+      }
+    }
+
+    if (!withDateOrder) {
+      entries.sort((a, b) => b.date.compareTo(a.date));
+    }
+    return entries;
   }
 
   Future<DiaryEntry?> getEntryById(String entryId) async {

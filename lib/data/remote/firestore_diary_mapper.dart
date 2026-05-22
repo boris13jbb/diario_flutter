@@ -16,31 +16,67 @@ class FirestoreDiaryMapper {
     return map;
   }
 
+  /// Convierte un documento de Firestore; devuelve null si el JSON no es válido.
+  static DiaryEntry? tryFromDocument(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    try {
+      final data = doc.data();
+      if (data == null) return null;
+      return DiaryEntry.fromJson(_normalize(doc.id, data));
+    } catch (e) {
+      // Evita que un documento corrupto bloquee toda la sincronización.
+      return null;
+    }
+  }
+
   static DiaryEntry fromDocument(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data() ?? {};
-    return DiaryEntry.fromJson(_normalize(doc.id, data));
+    return tryFromDocument(doc) ??
+        (throw FormatException('Documento inválido: ${doc.id}'));
   }
 
   static Map<String, dynamic> _normalize(String id, Map<String, dynamic> data) {
     return {
       'id': id,
-      'user_id': data['user_id'],
-      'date': data['date'] ?? '',
-      'title': data['title'] ?? '',
-      'content': data['content'] ?? '',
-      'audio_markers': _asJsonList(data['audio_markers']),
-      'draw_strokes': _asJsonList(data['draw_strokes']),
-      'audio_file_path': data['audio_file_path'],
-      'synced': data['synced'] ?? true,
+      'user_id': data['user_id']?.toString() ?? '',
+      'date': data['date']?.toString() ?? '',
+      'title': data['title']?.toString() ?? '',
+      'content': data['content']?.toString() ?? '',
+      'audio_markers': _safeMarkerMaps(data['audio_markers']),
+      'draw_strokes': _safeStrokeMaps(data['draw_strokes']),
+      'audio_file_path': data['audio_file_path']?.toString(),
+      'category_id': data['category_id']?.toString(),
+      'synced': data['synced'] == true,
       'last_updated': (data['last_updated'] as num?)?.toInt() ?? 0,
       'created_at': _toIsoString(data['created_at']),
       'updated_at': _toIsoString(data['updated_at']),
     };
   }
 
-  static List<dynamic> _asJsonList(dynamic value) {
-    if (value is List) return value;
-    return const [];
+  /// Solo incluye mapas válidos para [AudioMarker.fromJson].
+  static List<Map<String, dynamic>> _safeMarkerMaps(dynamic value) {
+    if (value is! List) return const [];
+    final result = <Map<String, dynamic>>[];
+    for (final item in value) {
+      if (item is! Map) continue;
+      final map = Map<String, dynamic>.from(item);
+      if (map['id'] == null || map['timestamp'] == null) continue;
+      result.add(map);
+    }
+    return result;
+  }
+
+  /// Solo incluye mapas válidos para [DrawStroke.fromJson].
+  static List<Map<String, dynamic>> _safeStrokeMaps(dynamic value) {
+    if (value is! List) return const [];
+    final result = <Map<String, dynamic>>[];
+    for (final item in value) {
+      if (item is! Map) continue;
+      final map = Map<String, dynamic>.from(item);
+      if (map['id'] == null || map['points'] == null) continue;
+      result.add(map);
+    }
+    return result;
   }
 
   static String? _toIsoString(dynamic value) {

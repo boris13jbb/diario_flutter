@@ -66,6 +66,12 @@ class DiaryDao extends DatabaseAccessor<AppDatabase> with _$DiaryDaoMixin {
     return (delete(diaryEntries)..where((tbl) => tbl.userId.equals(userId))).go();
   }
 
+  /// Elimina entradas locales de otro usuario (p. ej. UID antiguo de Supabase).
+  Future<int> deleteEntriesNotForUser(String userId) {
+    return (delete(diaryEntries)..where((tbl) => tbl.userId.equals(userId).not()))
+        .go();
+  }
+
   /// Mapea de entidad Drift a modelo de dominio
   domain.DiaryEntry _mapToDomain(DiaryEntry row) {
     return domain.DiaryEntry(
@@ -77,6 +83,7 @@ class DiaryDao extends DatabaseAccessor<AppDatabase> with _$DiaryDaoMixin {
       audioMarkers: [], // TODO: Parsear desde JSON
       drawStrokes: [], // TODO: Parsear desde JSON
       audioFilePath: row.audioFilePath,
+      categoryId: row.categoryId,
       synced: row.synced,
       lastUpdated: row.lastUpdated,
       createdAt: row.createdAt,
@@ -95,6 +102,7 @@ class DiaryDao extends DatabaseAccessor<AppDatabase> with _$DiaryDaoMixin {
       audioMarkers: const Value('[]'), // TODO: Convertir a JSON
       drawStrokes: const Value('[]'), // TODO: Convertir a JSON
       audioFilePath: Value(entry.audioFilePath),
+      categoryId: Value(entry.categoryId),
       synced: Value(entry.synced),
       lastUpdated: Value(entry.lastUpdated),
       createdAt: Value(entry.createdAt),

@@ -10,6 +10,7 @@ class DiaryEntries extends Table {
   TextColumn get audioMarkers => text().withDefault(const Constant('[]'))();
   TextColumn get drawStrokes => text().withDefault(const Constant('[]'))();
   TextColumn get audioFilePath => text().nullable()();
+  TextColumn get categoryId => text().nullable()();
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
   IntColumn get lastUpdated => integer()();
   DateTimeColumn get createdAt => dateTime().nullable()();

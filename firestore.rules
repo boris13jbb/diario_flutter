@@ -8,5 +8,15 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.user_id;
     }
+
+    match /note_categories/{categoryId} {
+      allow read, update, delete: if request.auth != null
+        && request.auth.uid == resource.data.user_id;
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.user_id
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.color is int;
+    }
   }
 }

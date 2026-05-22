@@ -3,10 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../constants/app_routes.dart';
+import '../constants/layout_breakpoints.dart';
 import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/auth/register_screen.dart';
 import '../../presentation/screens/auth/forgot_password_screen.dart';
-import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/profile/profile_screen.dart';
 import '../../presentation/widgets/fluent_ui.dart';
 import '../../presentation/viewmodels/auth_viewmodel.dart';
@@ -59,17 +59,27 @@ final GoRouter appRouter = GoRouter(
     // Main Routes - Usando Fluent UI
     GoRoute(
       path: AppRoutes.home,
-      builder: (context, state) => const FluentHomeScreen(
-        content: HomeScreen(),
-      ),
+      builder: (context, state) {
+        if (LayoutBreakpoints.isCompact(context)) {
+          return const FluentHomeScreen(
+            content: SizedBox.shrink(),
+          );
+        }
+        return const FluentHomeScreen(
+          content: FluentHomePlaceholder(),
+        );
+      },
     ),
 
-    // Entry Detail - Usando Fluent Detail con sidebar
     GoRoute(
       path: '${AppRoutes.entryDetail}/:id',
       builder: (context, state) {
         final entryId = state.pathParameters['id']!;
+        if (LayoutBreakpoints.isCompact(context)) {
+          return FluentDetailScreen(entryId: entryId);
+        }
         return FluentHomeScreen(
+          selectedEntryId: entryId,
           content: FluentDetailScreen(entryId: entryId),
         );
       },

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'fluent_colors.dart';
 import '../viewmodels/diary_viewmodel.dart';
+import 'category_picker_dialog.dart';
 
 /// Editor mejorado estilo Notion + Fluent
 class FluentEditorScreen extends ConsumerStatefulWidget {
@@ -23,6 +24,7 @@ class _FluentEditorScreenState extends ConsumerState<FluentEditorScreen> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
+  String? _selectedCategoryId;
   bool _isSaving = false;
 
   @override
@@ -42,7 +44,8 @@ class _FluentEditorScreenState extends ConsumerState<FluentEditorScreen> {
 
     _titleController.text = entry.title;
     _contentController.text = entry.content;
-    
+    _selectedCategoryId = entry.categoryId;
+
     try {
       final dateParts = entry.date.split('-');
       if (dateParts.length == 3) {
@@ -62,6 +65,31 @@ class _FluentEditorScreenState extends ConsumerState<FluentEditorScreen> {
     _titleController.dispose();
     _contentController.dispose();
     super.dispose();
+  }
+
+  String? _normalizeCategoryId(String? id) {
+    if (id == null || id.isEmpty) return null;
+    return id;
+  }
+
+  String _categoryLabel(DiaryState state) {
+    final id = _selectedCategoryId;
+    if (id == null || id.isEmpty) return 'Sin categoría';
+    for (final c in state.categories) {
+      if (c.id == id) return c.name;
+    }
+    return 'Categoría';
+  }
+
+  Future<void> _pickCategory() async {
+    final result = await CategoryPickerDialog.show(
+      context: context,
+      ref: ref,
+      selectedCategoryId: _selectedCategoryId ?? '',
+      filterMode: false,
+    );
+    if (!mounted || result == null || result == '__close__') return;
+    setState(() => _selectedCategoryId = result.isEmpty ? null : result);
   }
 
   Future<void> _selectDate() async {
@@ -104,6 +132,7 @@ class _FluentEditorScreenState extends ConsumerState<FluentEditorScreen> {
           date: _selectedDate.toIso8601String().split('T')[0],
           title: _titleController.text.trim(),
           content: _contentController.text.trim(),
+          categoryId: _normalizeCategoryId(_selectedCategoryId),
         );
 
         success = await notifier.updateEntry(updatedEntry);
@@ -112,6 +141,7 @@ class _FluentEditorScreenState extends ConsumerState<FluentEditorScreen> {
           date: _selectedDate.toIso8601String().split('T')[0],
           title: _titleController.text.trim(),
           content: _contentController.text.trim(),
+          categoryId: _normalizeCategoryId(_selectedCategoryId),
         );
       }
 
@@ -146,7 +176,8 @@ class _FluentEditorScreenState extends ConsumerState<FluentEditorScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? FluentColors.surfaceDark : FluentColors.surfaceLight;
     final textColor = isDark ? FluentColors.textPrimaryDark : FluentColors.textPrimaryLight;
-    
+    final diaryState = ref.watch(diaryViewModelProvider);
+
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
@@ -211,6 +242,10 @@ class _FluentEditorScreenState extends ConsumerState<FluentEditorScreen> {
                   children: [
                     // Fecha
                     _buildDateSelector(context, isDark),
+
+                    const SizedBox(height: FluentSpacing.md),
+
+                    _buildCategorySelector(context, isDark, diaryState),
                     
                     const SizedBox(height: FluentSpacing.lg),
                     
@@ -232,6 +267,44 @@ class _FluentEditorScreenState extends ConsumerState<FluentEditorScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategorySelector(
+    BuildContext context,
+    bool isDark,
+    DiaryState diaryState,
+  ) {
+    return GestureDetector(
+      onTap: _pickCategory,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: FluentSpacing.md,
+          vertical: FluentSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF5F0),
+          borderRadius: BorderRadius.circular(FluentRadius.lg),
+          border: Border.all(color: const Color(0xFFE8A87C)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.label_outline, size: 16, color: Color(0xFFB85C38)),
+            const SizedBox(width: FluentSpacing.sm),
+            Text(
+              _categoryLabel(diaryState),
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF3D2C24),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.expand_more, size: 16, color: Color(0xFFB85C38)),
+          ],
+        ),
       ),
     );
   }

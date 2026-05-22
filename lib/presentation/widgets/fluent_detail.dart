@@ -5,6 +5,10 @@ import 'fluent_colors.dart';
 import '../viewmodels/diary_viewmodel.dart';
 import '../../domain/models/diary_entry.dart';
 import '../../core/constants/app_routes.dart';
+import '../../core/di/service_locator.dart';
+import '../../core/utils/diary_entry_display.dart';
+import '../../data/repositories/diary_repository.dart';
+import '../viewmodels/auth_viewmodel.dart';
 
 /// Vista de detalle estilo Notion + Fluent
 class FluentDetailScreen extends ConsumerStatefulWidget {
@@ -27,17 +31,46 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
     _loadEntry();
   }
 
+  Future<void> _manualSync() async {
+    await ref.read(diaryViewModelProvider.notifier).syncPendingEntries();
+    if (!mounted) return;
+
+    final state = ref.read(diaryViewModelProvider);
+    final message = state.error ??
+        state.syncMessage ??
+        'Notas sincronizadas';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: state.error != null ? FluentColors.error : null,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    await _loadEntry();
+  }
+
   Future<void> _loadEntry() async {
     try {
       final state = ref.read(diaryViewModelProvider);
-      final foundEntry = state.entries.firstWhere(
-        (e) => e.id == widget.entryId,
-        orElse: () => throw Exception('Entrada no encontrada'),
-      );
-      
+      DiaryEntry? foundEntry;
+      for (final e in state.entries) {
+        if (e.id == widget.entryId) {
+          foundEntry = e;
+          break;
+        }
+      }
+      foundEntry ??= await getIt<DiaryRepository>().getEntryById(widget.entryId);
+
+      if (foundEntry == null) {
+        throw Exception('Entrada no encontrada');
+      }
+
       setState(() {
         entry = foundEntry;
         isLoading = false;
+        error = null;
       });
     } catch (e) {
       setState(() {
@@ -102,6 +135,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
     final isFavorite =
         ref.watch(diaryViewModelProvider).favoriteIds.contains(entry!.id);
 
+    final isCompact = MediaQuery.sizeOf(context).width < 600;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
@@ -118,59 +154,18 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
             fontWeight: FontWeight.w600,
             fontSize: 16,
           ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              isFavorite ? Icons.star : Icons.star_border,
-              color: FluentColors.warning,
-            ),
-            tooltip: isFavorite ? 'Quitar de favoritos' : 'Marcar como favorita',
-            onPressed: () =>
-                ref.read(diaryViewModelProvider.notifier).toggleFavorite(entry!.id),
-          ),
-          // Botón editar
-          Container(
-            margin: const EdgeInsets.only(right: FluentSpacing.xs),
-            decoration: BoxDecoration(
-              color: isDark ? FluentColors.surfaceVariantDark : FluentColors.surfaceVariantLight,
-              borderRadius: BorderRadius.circular(FluentRadius.md),
-              border: Border.all(
-                color: isDark ? FluentColors.borderDark : FluentColors.borderLight,
-                width: 1,
-              ),
-            ),
-            child: IconButton(
-              icon: Icon(Icons.edit, size: 20, color: textColor),
-              onPressed: () => context.push('${AppRoutes.editEntry}/${entry!.id}'),
-              tooltip: 'Editar (Ctrl+E)',
-              padding: const EdgeInsets.all(8),
-              constraints: const BoxConstraints(),
-            ),
-          ),
-          // Botón eliminar
-          Container(
-            margin: const EdgeInsets.only(right: FluentSpacing.sm),
-            decoration: BoxDecoration(
-              color: FluentColors.error.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(FluentRadius.md),
-              border: Border.all(
-                color: FluentColors.error.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.delete, size: 20, color: FluentColors.error),
-              onPressed: _showDeleteDialog,
-              tooltip: 'Eliminar',
-              padding: const EdgeInsets.all(8),
-              constraints: const BoxConstraints(),
-            ),
-          ),
-        ],
+        actions: _buildAppBarActions(context, isDark, textColor, isFavorite, isCompact),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(FluentSpacing.xl),
+        padding: EdgeInsets.fromLTRB(
+          FluentSpacing.lg,
+          FluentSpacing.lg,
+          FluentSpacing.lg,
+          FluentSpacing.xxl + 72 + bottomInset,
+        ),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
           child: Column(
@@ -232,17 +227,137 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('${AppRoutes.editEntry}/${entry!.id}'),
-        backgroundColor: FluentColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.edit),
-        label: const Text('Editar'),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FluentRadius.lg),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: FloatingActionButton.extended(
+          onPressed: () => context.push('${AppRoutes.editEntry}/${entry!.id}'),
+          backgroundColor: FluentColors.primary,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.edit),
+          label: const Text('Editar'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(FluentRadius.lg),
+          ),
         ),
       ),
     );
+  }
+
+  List<Widget> _buildAppBarActions(
+    BuildContext context,
+    bool isDark,
+    Color textColor,
+    bool isFavorite,
+    bool isCompact,
+  ) {
+    final isSyncing = ref.watch(diaryViewModelProvider).isSyncing;
+
+    if (isCompact) {
+      return [
+        IconButton(
+          icon: isSyncing
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(Icons.sync, color: textColor),
+          tooltip: 'Sincronizar',
+          onPressed: isSyncing ? null : _manualSync,
+        ),
+        IconButton(
+          icon: Icon(
+            isFavorite ? Icons.star : Icons.star_border,
+            color: FluentColors.warning,
+          ),
+          onPressed: () =>
+              ref.read(diaryViewModelProvider.notifier).toggleFavorite(entry!.id),
+        ),
+        PopupMenuButton<String>(
+          icon: Icon(Icons.more_vert, color: textColor),
+          onSelected: (value) {
+            switch (value) {
+              case 'sync':
+                _manualSync();
+                break;
+              case 'edit':
+                context.push('${AppRoutes.editEntry}/${entry!.id}');
+                break;
+              case 'delete':
+                _showDeleteDialog();
+                break;
+            }
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(value: 'sync', child: Text('Sincronizar')),
+            const PopupMenuItem(value: 'edit', child: Text('Editar')),
+            const PopupMenuItem(
+              value: 'delete',
+              child: Text('Eliminar', style: TextStyle(color: FluentColors.error)),
+            ),
+          ],
+        ),
+      ];
+    }
+
+    return [
+      IconButton(
+        icon: isSyncing
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(Icons.sync, color: textColor),
+        tooltip: 'Sincronizar',
+        onPressed: isSyncing ? null : _manualSync,
+      ),
+      IconButton(
+        icon: Icon(
+          isFavorite ? Icons.star : Icons.star_border,
+          color: FluentColors.warning,
+        ),
+        tooltip: isFavorite ? 'Quitar de favoritos' : 'Marcar como favorita',
+        onPressed: () =>
+            ref.read(diaryViewModelProvider.notifier).toggleFavorite(entry!.id),
+      ),
+      Container(
+        margin: const EdgeInsets.only(right: FluentSpacing.xs),
+        decoration: BoxDecoration(
+          color: isDark ? FluentColors.surfaceVariantDark : FluentColors.surfaceVariantLight,
+          borderRadius: BorderRadius.circular(FluentRadius.md),
+          border: Border.all(
+            color: isDark ? FluentColors.borderDark : FluentColors.borderLight,
+            width: 1,
+          ),
+        ),
+        child: IconButton(
+          icon: Icon(Icons.edit, size: 20, color: textColor),
+          onPressed: () => context.push('${AppRoutes.editEntry}/${entry!.id}'),
+          tooltip: 'Editar',
+          padding: const EdgeInsets.all(8),
+          constraints: const BoxConstraints(),
+        ),
+      ),
+      Container(
+        margin: const EdgeInsets.only(right: FluentSpacing.sm),
+        decoration: BoxDecoration(
+          color: FluentColors.error.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(FluentRadius.md),
+          border: Border.all(
+            color: FluentColors.error.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: IconButton(
+          icon: const Icon(Icons.delete, size: 20, color: FluentColors.error),
+          onPressed: _showDeleteDialog,
+          tooltip: 'Eliminar',
+          padding: const EdgeInsets.all(8),
+          constraints: const BoxConstraints(),
+        ),
+      ),
+    ];
   }
 
   Widget _buildMetadata(bool isDark, Color secondaryTextColor) {
@@ -383,6 +498,86 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
   }
 
   Widget _buildInfoSection(bool isDark, Color textColor, Color secondaryTextColor) {
+    final auth = ref.watch(authViewModelProvider);
+    final attachments = DiaryEntryDisplay.attachmentsSummary(entry!);
+
+    final category = ref.read(diaryViewModelProvider.notifier).categoryForEntry(entry!);
+
+    final rows = <Widget>[
+      _buildInfoRow(
+        icon: Icons.event,
+        label: 'Fecha de la nota',
+        value: DiaryEntryDisplay.formatEntryDate(entry!.date),
+        labelColor: secondaryTextColor,
+        valueColor: textColor,
+      ),
+      if (category != null)
+        _buildInfoRow(
+          icon: Icons.label_outline,
+          label: 'Categoría',
+          value: category.name,
+          labelColor: secondaryTextColor,
+          valueColor: textColor,
+        ),
+      _buildInfoRow(
+        icon: Icons.person_outline,
+        label: 'Cuenta',
+        value: DiaryEntryDisplay.authorLabel(auth.userEmail),
+        labelColor: secondaryTextColor,
+        valueColor: textColor,
+      ),
+      _buildInfoRow(
+        icon: entry!.synced ? Icons.cloud_done : Icons.cloud_upload,
+        label: 'Copia en la nube',
+        value: DiaryEntryDisplay.syncStatusLabel(entry!.synced),
+        labelColor: secondaryTextColor,
+        valueColor: textColor,
+      ),
+      _buildInfoRow(
+        icon: Icons.notes,
+        label: 'Extensión',
+        value: DiaryEntryDisplay.textLengthSummary(entry!.content),
+        labelColor: secondaryTextColor,
+        valueColor: textColor,
+      ),
+    ];
+
+    if (attachments != null) {
+      rows.add(
+        _buildInfoRow(
+          icon: Icons.attach_file,
+          label: 'Adjuntos',
+          value: attachments,
+          labelColor: secondaryTextColor,
+          valueColor: textColor,
+        ),
+      );
+    }
+
+    if (entry!.createdAt != null) {
+      rows.add(
+        _buildInfoRow(
+          icon: Icons.add_circle_outline,
+          label: 'Creada',
+          value: DiaryEntryDisplay.formatLongDateTime(entry!.createdAt!),
+          labelColor: secondaryTextColor,
+          valueColor: textColor,
+        ),
+      );
+    }
+
+    if (entry!.updatedAt != null) {
+      rows.add(
+        _buildInfoRow(
+          icon: Icons.edit_calendar,
+          label: 'Última edición',
+          value: DiaryEntryDisplay.formatLongDateTime(entry!.updatedAt!),
+          labelColor: secondaryTextColor,
+          valueColor: textColor,
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -398,7 +593,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
         Container(
           padding: const EdgeInsets.all(FluentSpacing.lg),
           decoration: BoxDecoration(
-            color: isDark ? FluentColors.surfaceVariantDark.withOpacity(0.3) : FluentColors.surfaceVariantLight.withOpacity(0.3),
+            color: isDark
+                ? FluentColors.surfaceVariantDark.withOpacity(0.3)
+                : FluentColors.surfaceVariantLight.withOpacity(0.3),
             borderRadius: BorderRadius.circular(FluentRadius.xl),
             border: Border.all(
               color: isDark ? FluentColors.borderDark : FluentColors.borderLight,
@@ -407,24 +604,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
           ),
           child: Column(
             children: [
-              _buildInfoRow('ID', entry!.id, secondaryTextColor),
-              const Divider(height: 24),
-              _buildInfoRow('Usuario', entry!.userId, secondaryTextColor),
-              if (entry!.createdAt != null) ...[
-                const Divider(height: 24),
-                _buildInfoRow(
-                  'Creado',
-                  _formatDateTime(entry!.createdAt!),
-                  secondaryTextColor,
-                ),
-              ],
-              if (entry!.updatedAt != null) ...[
-                const Divider(height: 24),
-                _buildInfoRow(
-                  'Actualizado',
-                  _formatDateTime(entry!.updatedAt!),
-                  secondaryTextColor,
-                ),
+              for (var i = 0; i < rows.length; i++) ...[
+                if (i > 0) const Divider(height: 24),
+                rows[i],
               ],
             ],
           ),
@@ -433,37 +615,44 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value, Color secondaryTextColor) {
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color labelColor,
+    required Color valueColor,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            '$label:',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: secondaryTextColor,
-            ),
-          ),
-        ),
+        Icon(icon, size: 20, color: labelColor),
+        const SizedBox(width: FluentSpacing.md),
         Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              color: secondaryTextColor,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: labelColor,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.35,
+                  color: valueColor,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
-        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
   void _showDeleteDialog() {

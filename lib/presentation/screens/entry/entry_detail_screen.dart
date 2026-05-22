@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/utils/diary_entry_display.dart';
 import '../../viewmodels/diary_viewmodel.dart';
 import '../../../domain/models/diary_entry.dart';
 
@@ -184,23 +185,31 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 8),
-            _buildInfoRow(context, 'ID', entry!.id),
-            _buildInfoRow(context, 'Usuario', entry!.userId),
             _buildInfoRow(
               context,
-              'Sincronizado',
-              entry!.synced ? 'Sí' : 'No',
+              'Fecha de la nota',
+              DiaryEntryDisplay.formatEntryDate(entry!.date),
+            ),
+            _buildInfoRow(
+              context,
+              'Copia en la nube',
+              entry!.synced ? 'Guardada en la nube' : 'Pendiente de subir',
+            ),
+            _buildInfoRow(
+              context,
+              'Extensión',
+              DiaryEntryDisplay.textLengthSummary(entry!.content),
             ),
             if (entry!.createdAt != null)
               _buildInfoRow(
                 context,
-                'Creado',
+                'Creada',
                 _formatDateTime(entry!.createdAt!),
               ),
             if (entry!.updatedAt != null)
               _buildInfoRow(
                 context,
-                'Actualizado',
+                'Última edición',
                 _formatDateTime(entry!.updatedAt!),
               ),
           ],
@@ -240,10 +249,8 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
     );
   }
 
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
-        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-  }
+  String _formatDateTime(DateTime dateTime) =>
+      DiaryEntryDisplay.formatLongDateTime(dateTime);
 
   void _showDeleteDialog() {
     showDialog(

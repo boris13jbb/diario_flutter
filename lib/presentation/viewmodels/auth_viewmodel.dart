@@ -9,12 +9,14 @@ class AuthState {
   final bool isAuthenticated;
   final String? error;
   final String? userId;
+  final String? userEmail;
 
   const AuthState({
     this.isLoading = false,
     this.isAuthenticated = false,
     this.error,
     this.userId,
+    this.userEmail,
   });
 
   AuthState copyWith({
@@ -22,12 +24,14 @@ class AuthState {
     bool? isAuthenticated,
     String? error,
     String? userId,
+    String? userEmail,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       error: error,
       userId: userId ?? this.userId,
+      userEmail: userEmail ?? this.userEmail,
     );
   }
 }
@@ -39,13 +43,23 @@ class AuthViewModel extends StateNotifier<AuthState> {
   AuthViewModel(this._authRepository) : super(const AuthState()) {
     final current = _authRepository.currentUser;
     if (current != null) {
-      state = state.copyWith(isAuthenticated: true, userId: current.uid);
+      state = state.copyWith(
+        isAuthenticated: true,
+        userId: current.uid,
+        userEmail: current.email,
+      );
     }
 
     _authRepository.authStateChanges.listen((User? user) {
+      if (user == null) {
+        state = const AuthState();
+        return;
+      }
       state = state.copyWith(
-        isAuthenticated: user != null,
-        userId: user?.uid ?? '',
+        isAuthenticated: true,
+        userId: user.uid,
+        userEmail: user.email,
+        isLoading: false,
       );
     });
   }
