@@ -11,13 +11,11 @@ class CategoriesRepository {
 
   CategoriesRepository(this._remoteService, this._localService);
 
-  /// Descarga de Firestore, fusiona con caché local y sube las que falten en la nube.
   Future<List<NoteCategory>> syncCategories(String userId) async {
     List<NoteCategory> remote = [];
     try {
       remote = await _remoteService.getAllForUser(userId);
-    } catch (e) {
-      // Sin red: devolver solo caché local
+    } catch (_) {
       return _localService.loadCategories(userId);
     }
 
@@ -29,9 +27,7 @@ class CategoriesRepository {
       if (!remoteIds.contains(category.id)) {
         try {
           await _remoteService.upsert(category, userId);
-        } catch (_) {
-          // Se reintentará en la próxima sincronización
-        }
+        } catch (_) {}
       }
     }
 
@@ -39,7 +35,6 @@ class CategoriesRepository {
     return merged;
   }
 
-  /// Crea categoría en Firestore y actualiza la caché local.
   Future<NoteCategory> createCategory({
     required String userId,
     required String name,
@@ -58,14 +53,49 @@ class CategoriesRepository {
 
     try {
       await _remoteService.create(category, userId);
-    } catch (e) {
-      // Guardar en local aunque falle la nube; syncCategories subirá después
-    }
+    } catch (_) {}
 
     final current = await _localService.loadCategories(userId);
     final updated = [...current, category];
     await _localService.saveCategories(userId, updated);
     return category;
+  }
+
+  Future<NoteCategory> updateCategory({
+    required String userId,
+    required NoteCategory category,
+  }) async {
+    final trimmed = category.name.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError('El nombre de la categoría no puede estar vacío');
+    }
+
+    final updatedCategory = category.copyWith(name: trimmed);
+
+    try {
+      await _remoteService.upsert(updatedCategory, userId);
+    } catch (_) {}
+
+    final current = await _localService.loadCategories(userId);
+    final updated = current
+        .map((c) => c.id == updatedCategory.id ? updatedCategory : c)
+        .toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    await _localService.saveCategories(userId, updated);
+    return updatedCategory;
+  }
+
+  Future<void> deleteCategory({
+    required String userId,
+    required String categoryId,
+  }) async {
+    try {
+      await _remoteService.delete(categoryId);
+    } catch (_) {}
+
+    final current = await _localService.loadCategories(userId);
+    final updated = current.where((c) => c.id != categoryId).toList();
+    await _localService.saveCategories(userId, updated);
   }
 
   Future<List<NoteCategory>> loadLocal(String userId) =>

@@ -39,6 +39,11 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# Secretos y archivos locales
+.env
+.env.local
+*.zip
+
 # Migración Supabase → Firebase (secretos)
 tools/migrate_supabase_to_firestore/node_modules/
 tools/migrate_supabase_to_firestore/.env

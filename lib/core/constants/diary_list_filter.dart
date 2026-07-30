@@ -6,6 +6,10 @@ enum DiaryListFilter {
   all,
   favorites,
   recent,
+  pinned,
+  archived,
+  trash,
+  reminders,
 }
 
 extension DiaryListFilterExtension on DiaryListFilter {
@@ -17,6 +21,14 @@ extension DiaryListFilterExtension on DiaryListFilter {
         return 'Favoritos';
       case DiaryListFilter.recent:
         return 'Recientes';
+      case DiaryListFilter.pinned:
+        return 'Fijadas';
+      case DiaryListFilter.archived:
+        return 'Archivo';
+      case DiaryListFilter.trash:
+        return 'Papelera';
+      case DiaryListFilter.reminders:
+        return 'Recordatorios';
     }
   }
 }

@@ -6,6 +6,7 @@ import 'core/di/service_locator.dart';
 import 'core/navigation/app_router.dart';
 import 'firebase_options.dart';
 import 'presentation/viewmodels/diary_viewmodel.dart';
+import 'presentation/viewmodels/theme_viewmodel.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +27,8 @@ class DiarioApp extends ConsumerStatefulWidget {
   ConsumerState<DiarioApp> createState() => _DiarioAppState();
 }
 
-class _DiarioAppState extends ConsumerState<DiarioApp> with WidgetsBindingObserver {
+class _DiarioAppState extends ConsumerState<DiarioApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -48,12 +50,14 @@ class _DiarioAppState extends ConsumerState<DiarioApp> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp.router(
-      title: 'Diario de Aprendizaje',
+      title: 'NotasPro',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
       routerConfig: appRouter,
     );
   }

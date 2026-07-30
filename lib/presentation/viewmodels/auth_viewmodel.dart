@@ -136,6 +136,45 @@ class AuthViewModel extends StateNotifier<AuthState> {
     }
   }
 
+  /// Cambiar contraseña (requiere contraseña actual).
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      await _authRepository.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      state = state.copyWith(isLoading: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  /// Actualiza el nombre visible del perfil.
+  Future<bool> updateDisplayName(String displayName) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await _authRepository.updateDisplayName(displayName);
+      state = state.copyWith(isLoading: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
   /// Limpiar error
   void clearError() {
     state = state.copyWith(error: null);

@@ -71,6 +71,44 @@ class AuthService {
     }
   }
 
+  /// Cambia la contraseña reautenticando con la contraseña actual.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      final email = user?.email;
+      if (user == null || email == null || email.isEmpty) {
+        throw Exception('No hay sesión activa');
+      }
+
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: currentPassword,
+      );
+      await user.reauthenticateWithCredential(credential);
+      await user.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw Exception('Error al cambiar la contraseña: $e');
+    }
+  }
+
+  Future<void> updateDisplayName(String displayName) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) throw Exception('No hay sesión activa');
+      await user.updateDisplayName(displayName.trim());
+      await user.reload();
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw Exception('Error al actualizar el perfil: $e');
+    }
+  }
+
   bool get isAuthenticated => currentUser != null;
 
   String? get userId => currentUser?.uid;
@@ -89,6 +127,10 @@ class AuthService {
         return Exception('El email no es válido');
       case 'user-disabled':
         return Exception('Esta cuenta está deshabilitada');
+      case 'requires-recent-login':
+        return Exception(
+          'Por seguridad, vuelve a iniciar sesión e intenta de nuevo',
+        );
       default:
         return Exception('Error de autenticación: ${e.message ?? e.code}');
     }

@@ -1,21 +1,22 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'entities/diary_entries_table.dart';
+import 'entities/note_versions_table.dart';
 import 'dao/diary_dao.dart';
+import 'dao/note_versions_dao.dart';
+import 'connection/connection.dart';
 
 part 'database.g.dart';
 
 /// Base de datos principal de la aplicación usando Drift
-@DriftDatabase(tables: [DiaryEntries], daos: [DiaryDao])
+@DriftDatabase(
+  tables: [DiaryEntries, NoteVersions],
+  daos: [DiaryDao, NoteVersionsDao],
+)
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase() : super(openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -27,15 +28,22 @@ class AppDatabase extends _$AppDatabase {
         if (from < 2) {
           await m.addColumn(diaryEntries, diaryEntries.categoryId);
         }
+        if (from < 3) {
+          await m.addColumn(diaryEntries, diaryEntries.isPinned);
+          await m.addColumn(diaryEntries, diaryEntries.isArchived);
+          await m.addColumn(diaryEntries, diaryEntries.isDeleted);
+          await m.addColumn(diaryEntries, diaryEntries.deletedAt);
+          await m.addColumn(diaryEntries, diaryEntries.colorValue);
+          await m.addColumn(diaryEntries, diaryEntries.priority);
+          await m.addColumn(diaryEntries, diaryEntries.tagsJson);
+          await m.addColumn(diaryEntries, diaryEntries.tasksJson);
+          await m.addColumn(diaryEntries, diaryEntries.linksJson);
+          await m.addColumn(diaryEntries, diaryEntries.attachmentsJson);
+          await m.addColumn(diaryEntries, diaryEntries.reminderAt);
+          await m.addColumn(diaryEntries, diaryEntries.lockPinHash);
+          await m.createTable(noteVersions);
+        }
       },
     );
   }
-}
-
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'diario.sqlite'));
-    return NativeDatabase(file);
-  });
 }

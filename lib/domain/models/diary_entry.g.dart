@@ -33,6 +33,24 @@ _$DiaryEntryImpl _$$DiaryEntryImplFromJson(Map<String, dynamic> json) =>
       updatedAt: json['updated_at'] == null
           ? null
           : DateTime.parse(json['updated_at'] as String),
+      isPinned: json['is_pinned'] as bool? ?? false,
+      isArchived: json['is_archived'] as bool? ?? false,
+      isDeleted: json['is_deleted'] as bool? ?? false,
+      deletedAt: json['deleted_at'] == null
+          ? null
+          : DateTime.parse(json['deleted_at'] as String),
+      colorValue: (json['color_value'] as num?)?.toInt(),
+      priority: (json['priority'] as num?)?.toInt() ?? 0,
+      tags: json['tags'] == null ? const [] : _tagsFromJson(json['tags']),
+      tasks: json['tasks'] == null ? const [] : _tasksFromJson(json['tasks']),
+      links: json['links'] == null ? const [] : _linksFromJson(json['links']),
+      attachments: json['attachments'] == null
+          ? const []
+          : _attachmentsFromJson(json['attachments']),
+      reminderAt: json['reminder_at'] == null
+          ? null
+          : DateTime.parse(json['reminder_at'] as String),
+      lockPinHash: json['lock_pin_hash'] as String?,
     );
 
 Map<String, dynamic> _$$DiaryEntryImplToJson(_$DiaryEntryImpl instance) =>
@@ -50,4 +68,16 @@ Map<String, dynamic> _$$DiaryEntryImplToJson(_$DiaryEntryImpl instance) =>
       'last_updated': instance.lastUpdated,
       'created_at': instance.createdAt?.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
+      'is_pinned': instance.isPinned,
+      'is_archived': instance.isArchived,
+      'is_deleted': instance.isDeleted,
+      'deleted_at': instance.deletedAt?.toIso8601String(),
+      'color_value': instance.colorValue,
+      'priority': instance.priority,
+      'tags': instance.tags,
+      'tasks': _tasksToJson(instance.tasks),
+      'links': _linksToJson(instance.links),
+      'attachments': _attachmentsToJson(instance.attachments),
+      'reminder_at': instance.reminderAt?.toIso8601String(),
+      'lock_pin_hash': instance.lockPinHash,
     };

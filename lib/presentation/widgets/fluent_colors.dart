@@ -1,44 +1,44 @@
 import 'package:flutter/material.dart';
 
-/// Colores personalizados estilo Microsoft Fluent + Notion
+/// Paleta profesional del diario: teal sobrio + superficies neutrales.
+/// Evita acentos genéricos (púrpura M3 por defecto / cream-terracotta).
 class FluentColors {
-  // Colores primarios - Azul Microsoft
-  static const primary = Color(0xFF0078D4);
-  static const primaryLight = Color(0xFF2B88D8);
-  static const primaryDark = Color(0xFF005A9E);
-  
+  // Primarios — teal profundo (aprendizaje / foco)
+  static const primary = Color(0xFF0F766E);
+  static const primaryLight = Color(0xFF14B8A6);
+  static const primaryDark = Color(0xFF115E59);
+
   // Superficies
-  static const surfaceLight = Color(0xFFFAFAFA);
-  static const surfaceDark = Color(0xFF202020);
-  static const surfaceVariantLight = Color(0xFFF3F3F3);
-  static const surfaceVariantDark = Color(0xFF2D2D2D);
-  
+  static const surfaceLight = Color(0xFFF8FAFC);
+  static const surfaceDark = Color(0xFF0F172A);
+  static const surfaceVariantLight = Color(0xFFF1F5F9);
+  static const surfaceVariantDark = Color(0xFF1E293B);
+
   // Sidebar
-  static const sidebarLight = Color(0xFFFBFBFB);
-  static const sidebarDark = Color(0xFF1E1E1E);
+  static const sidebarLight = Color(0xFFFFFFFF);
+  static const sidebarDark = Color(0xFF111827);
   static const sidebarItemLight = Color(0xFFFFFFFF);
-  static const sidebarItemDark = Color(0xFF252526);
-  static const sidebarItemHoverLight = Color(0xFFF3F3F3);
-  static const sidebarItemHoverDark = Color(0xFF2A2D2E);
-  static const sidebarItemSelectedLight = Color(0xFFE8F0FE);
-  static const sidebarItemSelectedDark = Color(0xFF094771);
-  
+  static const sidebarItemDark = Color(0xFF1F2937);
+  static const sidebarItemHoverLight = Color(0xFFF1F5F9);
+  static const sidebarItemHoverDark = Color(0xFF334155);
+  static const sidebarItemSelectedLight = Color(0xFFCCFBF1);
+  static const sidebarItemSelectedDark = Color(0xFF134E4A);
+
   // Bordes
-  static const borderLight = Color(0xFFE0E0E0);
-  static const borderDark = Color(0xFF3E3E3E);
-  
+  static const borderLight = Color(0xFFE2E8F0);
+  static const borderDark = Color(0xFF334155);
+
   // Texto
-  static const textPrimaryLight = Color(0xFF242424);
-  static const textPrimaryDark = Color(0xFFCCCCCC);
-  static const textSecondaryLight = Color(0xFF616161);
-  static const textSecondaryDark = Color(0xFF999999);
-  
+  static const textPrimaryLight = Color(0xFF0F172A);
+  static const textPrimaryDark = Color(0xFFF1F5F9);
+  static const textSecondaryLight = Color(0xFF64748B);
+  static const textSecondaryDark = Color(0xFF94A3B8);
+
   // Estados
-  static const success = Color(0xFF107C10);
-  static const warning = Color(0xFFFFB900);
-  static const error = Color(0xFFD13438);
-  
-  // Sombras Fluent
+  static const success = Color(0xFF15803D);
+  static const warning = Color(0xFFD97706);
+  static const error = Color(0xFFDC2626);
+
   static const List<BoxShadow> shadow2 = [
     BoxShadow(
       color: Color(0x0A000000),
@@ -46,7 +46,7 @@ class FluentColors {
       offset: Offset(0, 2),
     ),
   ];
-  
+
   static const List<BoxShadow> shadow4 = [
     BoxShadow(
       color: Color(0x14000000),
@@ -59,7 +59,7 @@ class FluentColors {
       offset: Offset(0, 0),
     ),
   ];
-  
+
   static const List<BoxShadow> shadow8 = [
     BoxShadow(
       color: Color(0x1E000000),
@@ -74,7 +74,6 @@ class FluentColors {
   ];
 }
 
-/// Constantes de diseño Fluent
 class FluentSpacing {
   static const double xs = 4.0;
   static const double sm = 8.0;
@@ -89,4 +88,5 @@ class FluentRadius {
   static const double md = 6.0;
   static const double lg = 8.0;
   static const double xl = 12.0;
+  static const double xxl = 16.0;
 }

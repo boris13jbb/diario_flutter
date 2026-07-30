@@ -11,6 +11,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:diario_flutter/core/di/injectable_config.dart' as _i232;
 import 'package:diario_flutter/data/local/dao/diary_dao.dart' as _i827;
+import 'package:diario_flutter/data/local/dao/note_versions_dao.dart' as _i548;
 import 'package:diario_flutter/data/local/database.dart' as _i588;
 import 'package:diario_flutter/data/remote/auth_service.dart' as _i217;
 import 'package:diario_flutter/data/remote/firestore_category_service.dart'
@@ -52,14 +53,18 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i827.DiaryDao>(
       () => injectableConfig.diaryDao(gh<_i588.AppDatabase>()),
     );
+    gh.lazySingleton<_i548.NoteVersionsDao>(
+      () => injectableConfig.noteVersionsDao(gh<_i588.AppDatabase>()),
+    );
+    gh.lazySingleton<_i149.AuthRepository>(
+      () => _i149.AuthRepository(gh<_i217.AuthService>()),
+    );
     gh.lazySingleton<_i971.DiaryRepository>(
       () => _i971.DiaryRepository(
         gh<_i827.DiaryDao>(),
         gh<_i989.FirestoreDiaryService>(),
+        gh<_i548.NoteVersionsDao>(),
       ),
-    );
-    gh.lazySingleton<_i149.AuthRepository>(
-      () => _i149.AuthRepository(gh<_i217.AuthService>()),
     );
     return this;
   }

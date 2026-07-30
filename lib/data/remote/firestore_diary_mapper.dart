@@ -13,10 +13,15 @@ class FirestoreDiaryMapper {
     if (entry.updatedAt != null) {
       map['updated_at'] = Timestamp.fromDate(entry.updatedAt!.toUtc());
     }
+    if (entry.deletedAt != null) {
+      map['deleted_at'] = Timestamp.fromDate(entry.deletedAt!.toUtc());
+    }
+    if (entry.reminderAt != null) {
+      map['reminder_at'] = Timestamp.fromDate(entry.reminderAt!.toUtc());
+    }
     return map;
   }
 
-  /// Convierte un documento de Firestore; devuelve null si el JSON no es válido.
   static DiaryEntry? tryFromDocument(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
@@ -24,8 +29,7 @@ class FirestoreDiaryMapper {
       final data = doc.data();
       if (data == null) return null;
       return DiaryEntry.fromJson(_normalize(doc.id, data));
-    } catch (e) {
-      // Evita que un documento corrupto bloquee toda la sincronización.
+    } catch (_) {
       return null;
     }
   }
@@ -50,10 +54,24 @@ class FirestoreDiaryMapper {
       'last_updated': (data['last_updated'] as num?)?.toInt() ?? 0,
       'created_at': _toIsoString(data['created_at']),
       'updated_at': _toIsoString(data['updated_at']),
+      'is_pinned': data['is_pinned'] == true,
+      'is_archived': data['is_archived'] == true,
+      'is_deleted': data['is_deleted'] == true,
+      'deleted_at': _toIsoString(data['deleted_at']),
+      'color_value': (data['color_value'] as num?)?.toInt(),
+      'priority': (data['priority'] as num?)?.toInt() ?? 0,
+      'tags': data['tags'] is List
+          ? (data['tags'] as List).map((e) => e.toString()).toList()
+          : const <String>[],
+      'tasks': data['tasks'] is List ? data['tasks'] : const [],
+      'links': data['links'] is List ? data['links'] : const [],
+      'attachments':
+          data['attachments'] is List ? data['attachments'] : const [],
+      'reminder_at': _toIsoString(data['reminder_at']),
+      'lock_pin_hash': data['lock_pin_hash']?.toString(),
     };
   }
 
-  /// Solo incluye mapas válidos para [AudioMarker.fromJson].
   static List<Map<String, dynamic>> _safeMarkerMaps(dynamic value) {
     if (value is! List) return const [];
     final result = <Map<String, dynamic>>[];
@@ -66,7 +84,6 @@ class FirestoreDiaryMapper {
     return result;
   }
 
-  /// Solo incluye mapas válidos para [DrawStroke.fromJson].
   static List<Map<String, dynamic>> _safeStrokeMaps(dynamic value) {
     if (value is! List) return const [];
     final result = <Map<String, dynamic>>[];

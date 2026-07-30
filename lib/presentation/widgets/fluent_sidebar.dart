@@ -6,6 +6,7 @@ import '../viewmodels/diary_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/constants/diary_list_filter.dart';
+import '../../core/constants/diary_sort_order.dart';
 import '../../core/constants/layout_breakpoints.dart';
 import '../../domain/models/diary_entry.dart';
 import '../../domain/models/note_category.dart';
@@ -14,8 +15,14 @@ import 'category_picker_dialog.dart';
 /// Barra lateral principal estilo Microsoft Fluent
 class FluentSidebar extends ConsumerStatefulWidget {
   final String? selectedEntryId;
-  
-  const FluentSidebar({super.key, this.selectedEntryId});
+  /// Ancho fijo en escritorio. En compacto ocupa todo el ancho.
+  final double width;
+
+  const FluentSidebar({
+    super.key,
+    this.selectedEntryId,
+    this.width = LayoutBreakpoints.sidebarDefault,
+  });
 
   @override
   ConsumerState<FluentSidebar> createState() => _FluentSidebarState();
@@ -49,15 +56,17 @@ class _FluentSidebarState extends ConsumerState<FluentSidebar> {
     final isCompact = LayoutBreakpoints.isCompact(context);
     
     return Container(
-      width: isCompact ? double.infinity : 280,
+      width: isCompact ? double.infinity : widget.width,
       decoration: BoxDecoration(
         color: sidebarBg,
-        border: Border(
-          right: BorderSide(
-            color: isDark ? FluentColors.borderDark : FluentColors.borderLight,
-            width: 1,
-          ),
-        ),
+        border: isCompact
+            ? null
+            : Border(
+                right: BorderSide(
+                  color: isDark ? FluentColors.borderDark : FluentColors.borderLight,
+                  width: 1,
+                ),
+              ),
       ),
       child: Column(
         children: [
@@ -66,7 +75,11 @@ class _FluentSidebarState extends ConsumerState<FluentSidebar> {
           
           // Buscador
           _buildSearchBar(context, isDark),
-          
+
+          const SizedBox(height: FluentSpacing.sm),
+
+          _buildSortRow(context, ref, diaryState, isDark, secondaryTextColor),
+
           const SizedBox(height: FluentSpacing.sm),
           
           // Filtros rápidos
@@ -119,6 +132,40 @@ class _FluentSidebarState extends ConsumerState<FluentSidebar> {
     );
   }
 
+  Future<void> _confirmEmptyTrash(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Vaciar papelera'),
+        content: const Text(
+          'Se eliminarán definitivamente todas las notas de la papelera. Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Vaciar',
+              style: TextStyle(color: FluentColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final ok = await ref.read(diaryViewModelProvider.notifier).emptyTrash();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok ? 'Papelera vaciada' : 'No se pudo vaciar la papelera'),
+        backgroundColor: ok ? null : FluentColors.error,
+      ),
+    );
+  }
+
   Widget _buildHeader(
     BuildContext context,
     WidgetRef ref,
@@ -167,6 +214,12 @@ class _FluentSidebarState extends ConsumerState<FluentSidebar> {
             tooltip: 'Sincronizar notas',
             onPressed: diaryState.isSyncing ? null : () => _manualSync(context, ref),
           ),
+          if (diaryState.listFilter == DiaryListFilter.trash)
+            IconButton(
+              icon: const Icon(Icons.delete_forever, color: FluentColors.error),
+              tooltip: 'Vaciar papelera',
+              onPressed: () => _confirmEmptyTrash(context, ref),
+            ),
           const SizedBox(width: 4),
           Container(
             decoration: BoxDecoration(
@@ -229,6 +282,55 @@ class _FluentSidebarState extends ConsumerState<FluentSidebar> {
     );
   }
 
+  Widget _buildSortRow(
+    BuildContext context,
+    WidgetRef ref,
+    DiaryState diaryState,
+    bool isDark,
+    Color secondaryTextColor,
+  ) {
+    final notifier = ref.read(diaryViewModelProvider.notifier);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: FluentSpacing.lg),
+      child: Row(
+        children: [
+          Icon(Icons.sort, size: 16, color: secondaryTextColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<DiarySortOrder>(
+                isExpanded: true,
+                value: diaryState.sortOrder,
+                icon: Icon(Icons.expand_more, color: secondaryTextColor),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark
+                      ? FluentColors.textPrimaryDark
+                      : FluentColors.textPrimaryLight,
+                ),
+                dropdownColor: isDark
+                    ? FluentColors.surfaceVariantDark
+                    : FluentColors.surfaceLight,
+                items: DiarySortOrder.values
+                    .map(
+                      (order) => DropdownMenuItem(
+                        value: order,
+                        child: Text(order.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) notifier.setSortOrder(value);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQuickFilters(
     BuildContext context,
     WidgetRef ref,
@@ -237,50 +339,61 @@ class _FluentSidebarState extends ConsumerState<FluentSidebar> {
     Color secondaryTextColor,
   ) {
     final notifier = ref.read(diaryViewModelProvider.notifier);
+    final filters = <(DiaryListFilter, IconData)>[
+      (DiaryListFilter.all, Icons.list),
+      (DiaryListFilter.favorites, Icons.star_border),
+      (DiaryListFilter.pinned, Icons.push_pin_outlined),
+      (DiaryListFilter.recent, Icons.access_time),
+      (DiaryListFilter.reminders, Icons.alarm),
+      (DiaryListFilter.archived, Icons.archive_outlined),
+      (DiaryListFilter.trash, Icons.delete_outline),
+    ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: FluentSpacing.lg,
-        vertical: FluentSpacing.sm,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildFilterChip(
-              context,
-              DiaryListFilter.all,
-              Icons.list,
-              isDark,
-              secondaryTextColor,
-              activeFilter == DiaryListFilter.all,
-              () => notifier.setListFilter(DiaryListFilter.all),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: _buildFilterChip(
-              context,
-              DiaryListFilter.favorites,
-              Icons.star_border,
-              isDark,
-              secondaryTextColor,
-              activeFilter == DiaryListFilter.favorites,
-              () => notifier.setListFilter(DiaryListFilter.favorites),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: _buildFilterChip(
-              context,
-              DiaryListFilter.recent,
-              Icons.access_time,
-              isDark,
-              secondaryTextColor,
-              activeFilter == DiaryListFilter.recent,
-              () => notifier.setListFilter(DiaryListFilter.recent),
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: FluentSpacing.md),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Sidebar estrecho: scroll horizontal. Ancho suficiente: Wrap.
+          if (constraints.maxWidth < 340) {
+            return SizedBox(
+              height: 40,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: filters.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 6),
+                itemBuilder: (context, index) {
+                  final item = filters[index];
+                  return _buildFilterChip(
+                    context,
+                    item.$1,
+                    item.$2,
+                    isDark,
+                    secondaryTextColor,
+                    activeFilter == item.$1,
+                    () => notifier.setListFilter(item.$1),
+                  );
+                },
+              ),
+            );
+          }
+
+          return Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final item in filters)
+                _buildFilterChip(
+                  context,
+                  item.$1,
+                  item.$2,
+                  isDark,
+                  secondaryTextColor,
+                  activeFilter == item.$1,
+                  () => notifier.setListFilter(item.$1),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -317,14 +430,16 @@ class _FluentSidebarState extends ConsumerState<FluentSidebar> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: isActive
-                ? const Color(0xFFFFE8DC)
+                ? (isDark
+                    ? FluentColors.sidebarItemSelectedDark
+                    : FluentColors.sidebarItemSelectedLight)
                 : (isDark
                     ? FluentColors.surfaceVariantDark
                     : FluentColors.surfaceVariantLight),
             borderRadius: BorderRadius.circular(FluentRadius.lg),
             border: Border.all(
               color: isActive
-                  ? const Color(0xFFE8A87C)
+                  ? FluentColors.primary.withValues(alpha: 0.45)
                   : (isDark ? FluentColors.borderDark : FluentColors.borderLight),
             ),
           ),
@@ -333,7 +448,7 @@ class _FluentSidebarState extends ConsumerState<FluentSidebar> {
               Icon(
                 Icons.label_outline,
                 size: 18,
-                color: isActive ? const Color(0xFFB85C38) : secondaryTextColor,
+                color: isActive ? FluentColors.primary : secondaryTextColor,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -343,7 +458,9 @@ class _FluentSidebarState extends ConsumerState<FluentSidebar> {
                     fontSize: 13,
                     fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                     color: isActive
-                        ? const Color(0xFF3D2C24)
+                        ? (isDark
+                            ? FluentColors.textPrimaryDark
+                            : FluentColors.primaryDark)
                         : secondaryTextColor,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -471,11 +588,30 @@ class _FluentSidebarState extends ConsumerState<FluentSidebar> {
           title = 'Sin notas recientes';
           subtitle = 'No hay notas editadas en los últimos $kRecentNotesDays días';
           break;
+        case DiaryListFilter.pinned:
+          icon = Icons.push_pin_outlined;
+          title = 'Sin notas fijadas';
+          subtitle = 'Fija una nota desde el detalle para verla aquí';
+          break;
+        case DiaryListFilter.archived:
+          icon = Icons.archive_outlined;
+          title = 'Archivo vacío';
+          subtitle = 'Las notas archivadas aparecerán aquí';
+          break;
+        case DiaryListFilter.trash:
+          icon = Icons.delete_outline;
+          title = 'Papelera vacía';
+          subtitle = 'Las notas eliminadas se conservan aquí hasta borrarlas';
+          break;
+        case DiaryListFilter.reminders:
+          icon = Icons.alarm;
+          title = 'Sin recordatorios';
+          subtitle = 'Programa un recordatorio al editar una nota';
+          break;
         case DiaryListFilter.all:
           icon = Icons.note_add;
           title = 'No hay notas aún';
-          subtitle =
-              'Pulsa ⟳ para sincronizar. Usa el mismo email con el que migraste desde Supabase.';
+          subtitle = 'Pulsa + para crear tu primera nota o sincroniza la nube.';
           break;
       }
     }
@@ -590,7 +726,7 @@ class _FluentSidebarState extends ConsumerState<FluentSidebar> {
               radius: 16,
               backgroundColor: FluentColors.primary,
               child: Text(
-                _getUserInitials(authState.userId),
+                _getUserInitials(authState.userEmail ?? authState.userId),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -604,13 +740,13 @@ class _FluentSidebarState extends ConsumerState<FluentSidebar> {
     );
   }
 
-  String _getUserInitials(String? userId) {
-    if (userId == null || userId.isEmpty) return 'U';
-    // Usar las primeras 2 caracteres del userId
-    if (userId.length >= 2) {
-      return userId.substring(0, 2).toUpperCase();
+  String _getUserInitials(String? value) {
+    if (value == null || value.isEmpty) return 'U';
+    final local = value.contains('@') ? value.split('@').first : value;
+    if (local.length >= 2) {
+      return local.substring(0, 2).toUpperCase();
     }
-    return userId.toUpperCase();
+    return local[0].toUpperCase();
   }
 }
 

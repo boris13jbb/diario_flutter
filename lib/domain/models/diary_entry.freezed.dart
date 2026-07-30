@@ -23,26 +23,52 @@ DiaryEntry _$DiaryEntryFromJson(Map<String, dynamic> json) {
 mixin _$DiaryEntry {
   String get id => throw _privateConstructorUsedError;
   @JsonKey(name: 'user_id')
-  String get userId => throw _privateConstructorUsedError; // ID del usuario propietario
+  String get userId => throw _privateConstructorUsedError;
   String get date => throw _privateConstructorUsedError;
   String get title => throw _privateConstructorUsedError;
   String get content => throw _privateConstructorUsedError;
   @JsonKey(name: 'audio_markers', defaultValue: [])
-  List<AudioMarker> get audioMarkers => throw _privateConstructorUsedError; // Marcadores de audio
+  List<AudioMarker> get audioMarkers => throw _privateConstructorUsedError;
   @JsonKey(name: 'draw_strokes', defaultValue: [])
-  List<DrawStroke> get drawStrokes => throw _privateConstructorUsedError; // Trazos de dibujo
+  List<DrawStroke> get drawStrokes => throw _privateConstructorUsedError;
   @JsonKey(name: 'audio_file_path')
-  String? get audioFilePath => throw _privateConstructorUsedError; // Ruta al archivo de audio grabado
+  String? get audioFilePath => throw _privateConstructorUsedError;
   @JsonKey(name: 'category_id')
   String? get categoryId => throw _privateConstructorUsedError;
-  bool get synced =>
-      throw _privateConstructorUsedError; // Estado de sincronización con Firestore
+  bool get synced => throw _privateConstructorUsedError;
   @JsonKey(name: 'last_updated')
-  int get lastUpdated => throw _privateConstructorUsedError; // Timestamp de última actualización
+  int get lastUpdated => throw _privateConstructorUsedError;
   @JsonKey(name: 'created_at')
   DateTime? get createdAt => throw _privateConstructorUsedError;
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt => throw _privateConstructorUsedError;
+  @JsonKey(name: 'is_pinned')
+  bool get isPinned => throw _privateConstructorUsedError;
+  @JsonKey(name: 'is_archived')
+  bool get isArchived => throw _privateConstructorUsedError;
+  @JsonKey(name: 'is_deleted')
+  bool get isDeleted => throw _privateConstructorUsedError;
+  @JsonKey(name: 'deleted_at')
+  DateTime? get deletedAt => throw _privateConstructorUsedError;
+  @JsonKey(name: 'color_value')
+  int? get colorValue => throw _privateConstructorUsedError;
+  int get priority => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _tagsFromJson)
+  List<String> get tags => throw _privateConstructorUsedError;
+  @JsonKey(name: 'tasks', fromJson: _tasksFromJson, toJson: _tasksToJson)
+  List<NoteTask> get tasks => throw _privateConstructorUsedError;
+  @JsonKey(name: 'links', fromJson: _linksFromJson, toJson: _linksToJson)
+  List<NoteLink> get links => throw _privateConstructorUsedError;
+  @JsonKey(
+    name: 'attachments',
+    fromJson: _attachmentsFromJson,
+    toJson: _attachmentsToJson,
+  )
+  List<NoteAttachment> get attachments => throw _privateConstructorUsedError;
+  @JsonKey(name: 'reminder_at')
+  DateTime? get reminderAt => throw _privateConstructorUsedError;
+  @JsonKey(name: 'lock_pin_hash')
+  String? get lockPinHash => throw _privateConstructorUsedError;
 
   /// Serializes this DiaryEntry to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -77,6 +103,25 @@ abstract class $DiaryEntryCopyWith<$Res> {
     @JsonKey(name: 'last_updated') int lastUpdated,
     @JsonKey(name: 'created_at') DateTime? createdAt,
     @JsonKey(name: 'updated_at') DateTime? updatedAt,
+    @JsonKey(name: 'is_pinned') bool isPinned,
+    @JsonKey(name: 'is_archived') bool isArchived,
+    @JsonKey(name: 'is_deleted') bool isDeleted,
+    @JsonKey(name: 'deleted_at') DateTime? deletedAt,
+    @JsonKey(name: 'color_value') int? colorValue,
+    int priority,
+    @JsonKey(fromJson: _tagsFromJson) List<String> tags,
+    @JsonKey(name: 'tasks', fromJson: _tasksFromJson, toJson: _tasksToJson)
+    List<NoteTask> tasks,
+    @JsonKey(name: 'links', fromJson: _linksFromJson, toJson: _linksToJson)
+    List<NoteLink> links,
+    @JsonKey(
+      name: 'attachments',
+      fromJson: _attachmentsFromJson,
+      toJson: _attachmentsToJson,
+    )
+    List<NoteAttachment> attachments,
+    @JsonKey(name: 'reminder_at') DateTime? reminderAt,
+    @JsonKey(name: 'lock_pin_hash') String? lockPinHash,
   });
 }
 
@@ -108,6 +153,18 @@ class _$DiaryEntryCopyWithImpl<$Res, $Val extends DiaryEntry>
     Object? lastUpdated = null,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
+    Object? isPinned = null,
+    Object? isArchived = null,
+    Object? isDeleted = null,
+    Object? deletedAt = freezed,
+    Object? colorValue = freezed,
+    Object? priority = null,
+    Object? tags = null,
+    Object? tasks = null,
+    Object? links = null,
+    Object? attachments = null,
+    Object? reminderAt = freezed,
+    Object? lockPinHash = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -163,6 +220,54 @@ class _$DiaryEntryCopyWithImpl<$Res, $Val extends DiaryEntry>
                 ? _value.updatedAt
                 : updatedAt // ignore: cast_nullable_to_non_nullable
                       as DateTime?,
+            isPinned: null == isPinned
+                ? _value.isPinned
+                : isPinned // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            isArchived: null == isArchived
+                ? _value.isArchived
+                : isArchived // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            isDeleted: null == isDeleted
+                ? _value.isDeleted
+                : isDeleted // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            deletedAt: freezed == deletedAt
+                ? _value.deletedAt
+                : deletedAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            colorValue: freezed == colorValue
+                ? _value.colorValue
+                : colorValue // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            priority: null == priority
+                ? _value.priority
+                : priority // ignore: cast_nullable_to_non_nullable
+                      as int,
+            tags: null == tags
+                ? _value.tags
+                : tags // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
+            tasks: null == tasks
+                ? _value.tasks
+                : tasks // ignore: cast_nullable_to_non_nullable
+                      as List<NoteTask>,
+            links: null == links
+                ? _value.links
+                : links // ignore: cast_nullable_to_non_nullable
+                      as List<NoteLink>,
+            attachments: null == attachments
+                ? _value.attachments
+                : attachments // ignore: cast_nullable_to_non_nullable
+                      as List<NoteAttachment>,
+            reminderAt: freezed == reminderAt
+                ? _value.reminderAt
+                : reminderAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            lockPinHash: freezed == lockPinHash
+                ? _value.lockPinHash
+                : lockPinHash // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -194,6 +299,25 @@ abstract class _$$DiaryEntryImplCopyWith<$Res>
     @JsonKey(name: 'last_updated') int lastUpdated,
     @JsonKey(name: 'created_at') DateTime? createdAt,
     @JsonKey(name: 'updated_at') DateTime? updatedAt,
+    @JsonKey(name: 'is_pinned') bool isPinned,
+    @JsonKey(name: 'is_archived') bool isArchived,
+    @JsonKey(name: 'is_deleted') bool isDeleted,
+    @JsonKey(name: 'deleted_at') DateTime? deletedAt,
+    @JsonKey(name: 'color_value') int? colorValue,
+    int priority,
+    @JsonKey(fromJson: _tagsFromJson) List<String> tags,
+    @JsonKey(name: 'tasks', fromJson: _tasksFromJson, toJson: _tasksToJson)
+    List<NoteTask> tasks,
+    @JsonKey(name: 'links', fromJson: _linksFromJson, toJson: _linksToJson)
+    List<NoteLink> links,
+    @JsonKey(
+      name: 'attachments',
+      fromJson: _attachmentsFromJson,
+      toJson: _attachmentsToJson,
+    )
+    List<NoteAttachment> attachments,
+    @JsonKey(name: 'reminder_at') DateTime? reminderAt,
+    @JsonKey(name: 'lock_pin_hash') String? lockPinHash,
   });
 }
 
@@ -224,6 +348,18 @@ class __$$DiaryEntryImplCopyWithImpl<$Res>
     Object? lastUpdated = null,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
+    Object? isPinned = null,
+    Object? isArchived = null,
+    Object? isDeleted = null,
+    Object? deletedAt = freezed,
+    Object? colorValue = freezed,
+    Object? priority = null,
+    Object? tags = null,
+    Object? tasks = null,
+    Object? links = null,
+    Object? attachments = null,
+    Object? reminderAt = freezed,
+    Object? lockPinHash = freezed,
   }) {
     return _then(
       _$DiaryEntryImpl(
@@ -279,6 +415,54 @@ class __$$DiaryEntryImplCopyWithImpl<$Res>
             ? _value.updatedAt
             : updatedAt // ignore: cast_nullable_to_non_nullable
                   as DateTime?,
+        isPinned: null == isPinned
+            ? _value.isPinned
+            : isPinned // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        isArchived: null == isArchived
+            ? _value.isArchived
+            : isArchived // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        isDeleted: null == isDeleted
+            ? _value.isDeleted
+            : isDeleted // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        deletedAt: freezed == deletedAt
+            ? _value.deletedAt
+            : deletedAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        colorValue: freezed == colorValue
+            ? _value.colorValue
+            : colorValue // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        priority: null == priority
+            ? _value.priority
+            : priority // ignore: cast_nullable_to_non_nullable
+                  as int,
+        tags: null == tags
+            ? _value._tags
+            : tags // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
+        tasks: null == tasks
+            ? _value._tasks
+            : tasks // ignore: cast_nullable_to_non_nullable
+                  as List<NoteTask>,
+        links: null == links
+            ? _value._links
+            : links // ignore: cast_nullable_to_non_nullable
+                  as List<NoteLink>,
+        attachments: null == attachments
+            ? _value._attachments
+            : attachments // ignore: cast_nullable_to_non_nullable
+                  as List<NoteAttachment>,
+        reminderAt: freezed == reminderAt
+            ? _value.reminderAt
+            : reminderAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        lockPinHash: freezed == lockPinHash
+            ? _value.lockPinHash
+            : lockPinHash // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -303,8 +487,31 @@ class _$DiaryEntryImpl implements _DiaryEntry {
     @JsonKey(name: 'last_updated') required this.lastUpdated,
     @JsonKey(name: 'created_at') this.createdAt,
     @JsonKey(name: 'updated_at') this.updatedAt,
+    @JsonKey(name: 'is_pinned') this.isPinned = false,
+    @JsonKey(name: 'is_archived') this.isArchived = false,
+    @JsonKey(name: 'is_deleted') this.isDeleted = false,
+    @JsonKey(name: 'deleted_at') this.deletedAt,
+    @JsonKey(name: 'color_value') this.colorValue,
+    this.priority = 0,
+    @JsonKey(fromJson: _tagsFromJson) final List<String> tags = const [],
+    @JsonKey(name: 'tasks', fromJson: _tasksFromJson, toJson: _tasksToJson)
+    final List<NoteTask> tasks = const [],
+    @JsonKey(name: 'links', fromJson: _linksFromJson, toJson: _linksToJson)
+    final List<NoteLink> links = const [],
+    @JsonKey(
+      name: 'attachments',
+      fromJson: _attachmentsFromJson,
+      toJson: _attachmentsToJson,
+    )
+    final List<NoteAttachment> attachments = const [],
+    @JsonKey(name: 'reminder_at') this.reminderAt,
+    @JsonKey(name: 'lock_pin_hash') this.lockPinHash,
   }) : _audioMarkers = audioMarkers,
-       _drawStrokes = drawStrokes;
+       _drawStrokes = drawStrokes,
+       _tags = tags,
+       _tasks = tasks,
+       _links = links,
+       _attachments = attachments;
 
   factory _$DiaryEntryImpl.fromJson(Map<String, dynamic> json) =>
       _$$DiaryEntryImplFromJson(json);
@@ -314,7 +521,6 @@ class _$DiaryEntryImpl implements _DiaryEntry {
   @override
   @JsonKey(name: 'user_id')
   final String userId;
-  // ID del usuario propietario
   @override
   final String date;
   @override
@@ -330,9 +536,7 @@ class _$DiaryEntryImpl implements _DiaryEntry {
     return EqualUnmodifiableListView(_audioMarkers);
   }
 
-  // Marcadores de audio
   final List<DrawStroke> _drawStrokes;
-  // Marcadores de audio
   @override
   @JsonKey(name: 'draw_strokes', defaultValue: [])
   List<DrawStroke> get drawStrokes {
@@ -341,32 +545,92 @@ class _$DiaryEntryImpl implements _DiaryEntry {
     return EqualUnmodifiableListView(_drawStrokes);
   }
 
-  // Trazos de dibujo
   @override
   @JsonKey(name: 'audio_file_path')
   final String? audioFilePath;
-  // Ruta al archivo de audio grabado
   @override
   @JsonKey(name: 'category_id')
   final String? categoryId;
   @override
   @JsonKey()
   final bool synced;
-  // Estado de sincronización con Firestore
   @override
   @JsonKey(name: 'last_updated')
   final int lastUpdated;
-  // Timestamp de última actualización
   @override
   @JsonKey(name: 'created_at')
   final DateTime? createdAt;
   @override
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
+  @override
+  @JsonKey(name: 'is_pinned')
+  final bool isPinned;
+  @override
+  @JsonKey(name: 'is_archived')
+  final bool isArchived;
+  @override
+  @JsonKey(name: 'is_deleted')
+  final bool isDeleted;
+  @override
+  @JsonKey(name: 'deleted_at')
+  final DateTime? deletedAt;
+  @override
+  @JsonKey(name: 'color_value')
+  final int? colorValue;
+  @override
+  @JsonKey()
+  final int priority;
+  final List<String> _tags;
+  @override
+  @JsonKey(fromJson: _tagsFromJson)
+  List<String> get tags {
+    if (_tags is EqualUnmodifiableListView) return _tags;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_tags);
+  }
+
+  final List<NoteTask> _tasks;
+  @override
+  @JsonKey(name: 'tasks', fromJson: _tasksFromJson, toJson: _tasksToJson)
+  List<NoteTask> get tasks {
+    if (_tasks is EqualUnmodifiableListView) return _tasks;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_tasks);
+  }
+
+  final List<NoteLink> _links;
+  @override
+  @JsonKey(name: 'links', fromJson: _linksFromJson, toJson: _linksToJson)
+  List<NoteLink> get links {
+    if (_links is EqualUnmodifiableListView) return _links;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_links);
+  }
+
+  final List<NoteAttachment> _attachments;
+  @override
+  @JsonKey(
+    name: 'attachments',
+    fromJson: _attachmentsFromJson,
+    toJson: _attachmentsToJson,
+  )
+  List<NoteAttachment> get attachments {
+    if (_attachments is EqualUnmodifiableListView) return _attachments;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_attachments);
+  }
+
+  @override
+  @JsonKey(name: 'reminder_at')
+  final DateTime? reminderAt;
+  @override
+  @JsonKey(name: 'lock_pin_hash')
+  final String? lockPinHash;
 
   @override
   String toString() {
-    return 'DiaryEntry(id: $id, userId: $userId, date: $date, title: $title, content: $content, audioMarkers: $audioMarkers, drawStrokes: $drawStrokes, audioFilePath: $audioFilePath, categoryId: $categoryId, synced: $synced, lastUpdated: $lastUpdated, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'DiaryEntry(id: $id, userId: $userId, date: $date, title: $title, content: $content, audioMarkers: $audioMarkers, drawStrokes: $drawStrokes, audioFilePath: $audioFilePath, categoryId: $categoryId, synced: $synced, lastUpdated: $lastUpdated, createdAt: $createdAt, updatedAt: $updatedAt, isPinned: $isPinned, isArchived: $isArchived, isDeleted: $isDeleted, deletedAt: $deletedAt, colorValue: $colorValue, priority: $priority, tags: $tags, tasks: $tasks, links: $links, attachments: $attachments, reminderAt: $reminderAt, lockPinHash: $lockPinHash)';
   }
 
   @override
@@ -397,12 +661,35 @@ class _$DiaryEntryImpl implements _DiaryEntry {
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt));
+                other.updatedAt == updatedAt) &&
+            (identical(other.isPinned, isPinned) ||
+                other.isPinned == isPinned) &&
+            (identical(other.isArchived, isArchived) ||
+                other.isArchived == isArchived) &&
+            (identical(other.isDeleted, isDeleted) ||
+                other.isDeleted == isDeleted) &&
+            (identical(other.deletedAt, deletedAt) ||
+                other.deletedAt == deletedAt) &&
+            (identical(other.colorValue, colorValue) ||
+                other.colorValue == colorValue) &&
+            (identical(other.priority, priority) ||
+                other.priority == priority) &&
+            const DeepCollectionEquality().equals(other._tags, _tags) &&
+            const DeepCollectionEquality().equals(other._tasks, _tasks) &&
+            const DeepCollectionEquality().equals(other._links, _links) &&
+            const DeepCollectionEquality().equals(
+              other._attachments,
+              _attachments,
+            ) &&
+            (identical(other.reminderAt, reminderAt) ||
+                other.reminderAt == reminderAt) &&
+            (identical(other.lockPinHash, lockPinHash) ||
+                other.lockPinHash == lockPinHash));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     runtimeType,
     id,
     userId,
@@ -417,7 +704,19 @@ class _$DiaryEntryImpl implements _DiaryEntry {
     lastUpdated,
     createdAt,
     updatedAt,
-  );
+    isPinned,
+    isArchived,
+    isDeleted,
+    deletedAt,
+    colorValue,
+    priority,
+    const DeepCollectionEquality().hash(_tags),
+    const DeepCollectionEquality().hash(_tasks),
+    const DeepCollectionEquality().hash(_links),
+    const DeepCollectionEquality().hash(_attachments),
+    reminderAt,
+    lockPinHash,
+  ]);
 
   /// Create a copy of DiaryEntry
   /// with the given fields replaced by the non-null parameter values.
@@ -450,6 +749,25 @@ abstract class _DiaryEntry implements DiaryEntry {
     @JsonKey(name: 'last_updated') required final int lastUpdated,
     @JsonKey(name: 'created_at') final DateTime? createdAt,
     @JsonKey(name: 'updated_at') final DateTime? updatedAt,
+    @JsonKey(name: 'is_pinned') final bool isPinned,
+    @JsonKey(name: 'is_archived') final bool isArchived,
+    @JsonKey(name: 'is_deleted') final bool isDeleted,
+    @JsonKey(name: 'deleted_at') final DateTime? deletedAt,
+    @JsonKey(name: 'color_value') final int? colorValue,
+    final int priority,
+    @JsonKey(fromJson: _tagsFromJson) final List<String> tags,
+    @JsonKey(name: 'tasks', fromJson: _tasksFromJson, toJson: _tasksToJson)
+    final List<NoteTask> tasks,
+    @JsonKey(name: 'links', fromJson: _linksFromJson, toJson: _linksToJson)
+    final List<NoteLink> links,
+    @JsonKey(
+      name: 'attachments',
+      fromJson: _attachmentsFromJson,
+      toJson: _attachmentsToJson,
+    )
+    final List<NoteAttachment> attachments,
+    @JsonKey(name: 'reminder_at') final DateTime? reminderAt,
+    @JsonKey(name: 'lock_pin_hash') final String? lockPinHash,
   }) = _$DiaryEntryImpl;
 
   factory _DiaryEntry.fromJson(Map<String, dynamic> json) =
@@ -459,7 +777,7 @@ abstract class _DiaryEntry implements DiaryEntry {
   String get id;
   @override
   @JsonKey(name: 'user_id')
-  String get userId; // ID del usuario propietario
+  String get userId;
   @override
   String get date;
   @override
@@ -468,27 +786,66 @@ abstract class _DiaryEntry implements DiaryEntry {
   String get content;
   @override
   @JsonKey(name: 'audio_markers', defaultValue: [])
-  List<AudioMarker> get audioMarkers; // Marcadores de audio
+  List<AudioMarker> get audioMarkers;
   @override
   @JsonKey(name: 'draw_strokes', defaultValue: [])
-  List<DrawStroke> get drawStrokes; // Trazos de dibujo
+  List<DrawStroke> get drawStrokes;
   @override
   @JsonKey(name: 'audio_file_path')
-  String? get audioFilePath; // Ruta al archivo de audio grabado
+  String? get audioFilePath;
   @override
   @JsonKey(name: 'category_id')
   String? get categoryId;
   @override
-  bool get synced; // Estado de sincronización con Firestore
+  bool get synced;
   @override
   @JsonKey(name: 'last_updated')
-  int get lastUpdated; // Timestamp de última actualización
+  int get lastUpdated;
   @override
   @JsonKey(name: 'created_at')
   DateTime? get createdAt;
   @override
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt;
+  @override
+  @JsonKey(name: 'is_pinned')
+  bool get isPinned;
+  @override
+  @JsonKey(name: 'is_archived')
+  bool get isArchived;
+  @override
+  @JsonKey(name: 'is_deleted')
+  bool get isDeleted;
+  @override
+  @JsonKey(name: 'deleted_at')
+  DateTime? get deletedAt;
+  @override
+  @JsonKey(name: 'color_value')
+  int? get colorValue;
+  @override
+  int get priority;
+  @override
+  @JsonKey(fromJson: _tagsFromJson)
+  List<String> get tags;
+  @override
+  @JsonKey(name: 'tasks', fromJson: _tasksFromJson, toJson: _tasksToJson)
+  List<NoteTask> get tasks;
+  @override
+  @JsonKey(name: 'links', fromJson: _linksFromJson, toJson: _linksToJson)
+  List<NoteLink> get links;
+  @override
+  @JsonKey(
+    name: 'attachments',
+    fromJson: _attachmentsFromJson,
+    toJson: _attachmentsToJson,
+  )
+  List<NoteAttachment> get attachments;
+  @override
+  @JsonKey(name: 'reminder_at')
+  DateTime? get reminderAt;
+  @override
+  @JsonKey(name: 'lock_pin_hash')
+  String? get lockPinHash;
 
   /// Create a copy of DiaryEntry
   /// with the given fields replaced by the non-null parameter values.

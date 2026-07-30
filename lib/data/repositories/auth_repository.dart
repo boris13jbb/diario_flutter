@@ -35,6 +35,20 @@ class AuthRepository {
     await _authService.updatePassword(newPassword);
   }
 
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _authService.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+  }
+
+  Future<void> updateDisplayName(String displayName) async {
+    await _authService.updateDisplayName(displayName);
+  }
+
   bool get isAuthenticated => _authService.isAuthenticated;
 
   String? get userId => _authService.userId;

@@ -2,257 +2,314 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../presentation/widgets/fluent_colors.dart';
 
-/// Configuración del tema Material 3 para la aplicación
+/// Tema Material 3 profesional (ColorScheme.fromSeed + tipografía clara).
 class AppTheme {
-  // Colores primarios
-  static const Color primaryColor = Color(0xFF6750A4);
-  static const Color primaryContainer = Color(0xFFEADDFF);
-  static const Color onPrimary = Colors.white;
-  static const Color onPrimaryContainer = Color(0xFF21005D);
+  static const Color _seed = FluentColors.primary;
 
-  // Colores secundarios
-  static const Color secondaryColor = Color(0xFF625B71);
-  static const Color secondaryContainer = Color(0xFFE8DEF8);
-  static const Color onSecondary = Colors.white;
-  static const Color onSecondaryContainer = Color(0xFF1D192B);
+  static TextTheme _textTheme(Brightness brightness) {
+    final base = brightness == Brightness.dark
+        ? ThemeData(brightness: Brightness.dark).textTheme
+        : ThemeData(brightness: Brightness.light).textTheme;
+    final primary = brightness == Brightness.dark
+        ? FluentColors.textPrimaryDark
+        : FluentColors.textPrimaryLight;
+    final secondary = brightness == Brightness.dark
+        ? FluentColors.textSecondaryDark
+        : FluentColors.textSecondaryLight;
 
-  // Colores de superficie
-  static const Color surfaceColor = Color(0xFFFFFBFE);
-  static const Color onSurface = Color(0xFF1C1B1F);
-  static const Color surfaceVariant = Color(0xFFE7E0EC);
-  static const Color onSurfaceVariant = Color(0xFF49454F);
+    return GoogleFonts.plusJakartaSansTextTheme(base).copyWith(
+      displayLarge: GoogleFonts.plusJakartaSans(
+        fontSize: 36,
+        fontWeight: FontWeight.w700,
+        color: primary,
+        letterSpacing: -0.5,
+      ),
+      displayMedium: GoogleFonts.plusJakartaSans(
+        fontSize: 28,
+        fontWeight: FontWeight.w600,
+        color: primary,
+      ),
+      headlineMedium: GoogleFonts.plusJakartaSans(
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+        color: primary,
+        letterSpacing: -0.3,
+      ),
+      titleLarge: GoogleFonts.plusJakartaSans(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: primary,
+      ),
+      titleMedium: GoogleFonts.plusJakartaSans(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: primary,
+      ),
+      bodyLarge: GoogleFonts.plusJakartaSans(
+        fontSize: 16,
+        color: primary,
+        height: 1.55,
+      ),
+      bodyMedium: GoogleFonts.plusJakartaSans(
+        fontSize: 14,
+        color: primary,
+        height: 1.45,
+      ),
+      bodySmall: GoogleFonts.plusJakartaSans(
+        fontSize: 12,
+        color: secondary,
+      ),
+      labelLarge: GoogleFonts.plusJakartaSans(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
 
-  // Colores de error
-  static const Color errorColor = Color(0xFFB3261E);
-  static const Color onError = Colors.white;
+  static InputDecorationTheme _inputTheme(ColorScheme scheme, bool isDark) {
+    final radius = BorderRadius.circular(FluentRadius.xl);
+    final fill = isDark
+        ? FluentColors.surfaceVariantDark.withValues(alpha: 0.6)
+        : FluentColors.surfaceVariantLight;
+    final borderColor =
+        isDark ? FluentColors.borderDark : FluentColors.borderLight;
 
-  /// Tema claro - Estilo Microsoft Fluent
+    return InputDecorationTheme(
+      filled: true,
+      fillColor: fill,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: scheme.primary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: scheme.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: scheme.error, width: 2),
+      ),
+      labelStyle: TextStyle(color: scheme.onSurfaceVariant),
+      hintStyle: TextStyle(
+        color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+      ),
+      errorMaxLines: 2,
+    );
+  }
+
+  static ButtonStyle _filledButton(ColorScheme scheme) {
+    return FilledButton.styleFrom(
+      backgroundColor: scheme.primary,
+      foregroundColor: scheme.onPrimary,
+      minimumSize: const Size.fromHeight(48),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FluentRadius.xl),
+      ),
+      textStyle: GoogleFonts.plusJakartaSans(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+      ),
+      elevation: 0,
+    );
+  }
+
   static ThemeData get lightTheme {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: _seed,
+      brightness: Brightness.light,
+      primary: FluentColors.primary,
+      onPrimary: Colors.white,
+      secondary: FluentColors.primaryLight,
+      surface: FluentColors.surfaceLight,
+      error: FluentColors.error,
+    );
+
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorScheme: const ColorScheme.light(
-        primary: FluentColors.primary,
-        primaryContainer: FluentColors.primaryLight,
-        onPrimary: Colors.white,
-        onPrimaryContainer: FluentColors.primaryDark,
-        secondary: FluentColors.primaryLight,
-        secondaryContainer: FluentColors.sidebarItemSelectedLight,
-        onSecondary: Colors.white,
-        onSecondaryContainer: FluentColors.primary,
-        surface: FluentColors.surfaceLight,
-        onSurface: FluentColors.textPrimaryLight,
-        surfaceContainerHighest: FluentColors.surfaceVariantLight,
-        onSurfaceVariant: FluentColors.textSecondaryLight,
-        error: FluentColors.error,
-        onError: Colors.white,
-      ),
-      fontFamily: GoogleFonts.inter().fontFamily,
-      textTheme: GoogleFonts.interTextTheme().copyWith(
-        displayLarge: GoogleFonts.inter(
-          fontSize: 36,
-          fontWeight: FontWeight.w700,
-          color: FluentColors.textPrimaryLight,
-        ),
-        displayMedium: GoogleFonts.inter(
-          fontSize: 28,
-          fontWeight: FontWeight.w600,
-          color: FluentColors.textPrimaryLight,
-        ),
-        titleLarge: GoogleFonts.inter(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: FluentColors.textPrimaryLight,
-        ),
-        bodyLarge: GoogleFonts.inter(
-          fontSize: 16,
-          color: FluentColors.textPrimaryLight,
-          height: 1.6,
-        ),
-        bodyMedium: GoogleFonts.inter(
-          fontSize: 14,
-          color: FluentColors.textPrimaryLight,
-        ),
-        bodySmall: GoogleFonts.inter(
-          fontSize: 12,
-          color: FluentColors.textSecondaryLight,
-        ),
-      ),
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: FluentColors.surfaceLight,
+      fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
+      textTheme: _textTheme(Brightness.light),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
         backgroundColor: FluentColors.surfaceLight,
         foregroundColor: FluentColors.textPrimaryLight,
         scrolledUnderElevation: 0,
+        titleTextStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: FluentColors.textPrimaryLight,
+        ),
       ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: FluentColors.surfaceVariantLight.withOpacity(0.5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(FluentRadius.lg),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(FluentRadius.lg),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(FluentRadius.lg),
-          borderSide: const BorderSide(color: FluentColors.primary, width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
+      inputDecorationTheme: _inputTheme(colorScheme, false),
+      filledButtonTheme: FilledButtonThemeData(style: _filledButton(colorScheme)),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: FluentColors.primary,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          minimumSize: const Size.fromHeight(48),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FluentRadius.lg),
+            borderRadius: BorderRadius.circular(FluentRadius.xl),
           ),
           elevation: 0,
+          textStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: FluentColors.textPrimaryLight,
           side: const BorderSide(color: FluentColors.borderLight),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FluentRadius.lg),
+            borderRadius: BorderRadius.circular(FluentRadius.xl),
           ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: FluentColors.primary,
+          textStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
         ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: FluentColors.surfaceLight,
+        color: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FluentRadius.xl),
-          side: const BorderSide(color: FluentColors.borderLight, width: 1),
+          borderRadius: BorderRadius.circular(FluentRadius.xxl),
+          side: const BorderSide(color: FluentColors.borderLight),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FluentRadius.lg),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FluentRadius.xxl),
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: FluentColors.primary,
         foregroundColor: Colors.white,
-        elevation: 4,
+        elevation: 2,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(FluentRadius.lg)),
+          borderRadius: BorderRadius.all(Radius.circular(FluentRadius.xl)),
         ),
       ),
     );
   }
 
-  /// Tema oscuro - Estilo Microsoft Fluent Dark
   static ThemeData get darkTheme {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: _seed,
+      brightness: Brightness.dark,
+      primary: FluentColors.primaryLight,
+      onPrimary: Colors.white,
+      secondary: FluentColors.primary,
+      surface: FluentColors.surfaceDark,
+      error: FluentColors.error,
+    );
+
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      colorScheme: const ColorScheme.dark(
-        primary: FluentColors.primaryLight,
-        primaryContainer: FluentColors.primary,
-        onPrimary: Colors.white,
-        onPrimaryContainer: Colors.white,
-        secondary: FluentColors.primaryLight,
-        secondaryContainer: FluentColors.sidebarItemSelectedDark,
-        onSecondary: Colors.white,
-        onSecondaryContainer: Colors.white,
-        surface: FluentColors.surfaceDark,
-        onSurface: FluentColors.textPrimaryDark,
-        surfaceContainerHighest: FluentColors.surfaceVariantDark,
-        onSurfaceVariant: FluentColors.textSecondaryDark,
-        error: FluentColors.error,
-        onError: Colors.white,
-      ),
-      fontFamily: GoogleFonts.inter().fontFamily,
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
-        displayLarge: GoogleFonts.inter(
-          fontSize: 36,
-          fontWeight: FontWeight.w700,
-          color: FluentColors.textPrimaryDark,
-        ),
-        displayMedium: GoogleFonts.inter(
-          fontSize: 28,
-          fontWeight: FontWeight.w600,
-          color: FluentColors.textPrimaryDark,
-        ),
-        titleLarge: GoogleFonts.inter(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: FluentColors.textPrimaryDark,
-        ),
-        bodyLarge: GoogleFonts.inter(
-          fontSize: 16,
-          color: FluentColors.textPrimaryDark,
-          height: 1.6,
-        ),
-        bodyMedium: GoogleFonts.inter(
-          fontSize: 14,
-          color: FluentColors.textPrimaryDark,
-        ),
-        bodySmall: GoogleFonts.inter(
-          fontSize: 12,
-          color: FluentColors.textSecondaryDark,
-        ),
-      ),
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: FluentColors.surfaceDark,
+      fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
+      textTheme: _textTheme(Brightness.dark),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
         backgroundColor: FluentColors.surfaceDark,
         foregroundColor: FluentColors.textPrimaryDark,
         scrolledUnderElevation: 0,
+        titleTextStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: FluentColors.textPrimaryDark,
+        ),
       ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: FluentColors.surfaceVariantDark.withOpacity(0.5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(FluentRadius.lg),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(FluentRadius.lg),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(FluentRadius.lg),
-          borderSide: const BorderSide(color: FluentColors.primaryLight, width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
+      inputDecorationTheme: _inputTheme(colorScheme, true),
+      filledButtonTheme: FilledButtonThemeData(style: _filledButton(colorScheme)),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: FluentColors.primary,
+          backgroundColor: FluentColors.primaryLight,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          minimumSize: const Size.fromHeight(48),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FluentRadius.lg),
+            borderRadius: BorderRadius.circular(FluentRadius.xl),
           ),
           elevation: 0,
+          textStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: FluentColors.textPrimaryDark,
           side: const BorderSide(color: FluentColors.borderDark),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FluentRadius.lg),
+            borderRadius: BorderRadius.circular(FluentRadius.xl),
           ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: FluentColors.primaryLight,
+          textStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
         ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: FluentColors.surfaceDark,
+        color: FluentColors.surfaceVariantDark,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FluentRadius.xl),
-          side: const BorderSide(color: FluentColors.borderDark, width: 1),
+          borderRadius: BorderRadius.circular(FluentRadius.xxl),
+          side: const BorderSide(color: FluentColors.borderDark),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FluentRadius.lg),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: FluentColors.surfaceVariantDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FluentRadius.xxl),
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: FluentColors.primary,
+        backgroundColor: FluentColors.primaryLight,
         foregroundColor: Colors.white,
-        elevation: 4,
+        elevation: 2,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(FluentRadius.lg)),
+          borderRadius: BorderRadius.all(Radius.circular(FluentRadius.xl)),
         ),
       ),
     );

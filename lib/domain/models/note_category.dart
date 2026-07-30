@@ -12,11 +12,23 @@ class NoteCategory {
     required this.colorValue,
   });
 
+  NoteCategory copyWith({
+    String? id,
+    String? name,
+    int? colorValue,
+  }) {
+    return NoteCategory(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      colorValue: colorValue ?? this.colorValue,
+    );
+  }
+
   factory NoteCategory.fromJson(Map<String, dynamic> json) {
     return NoteCategory(
       id: json['id'] as String,
       name: json['name'] as String,
-      colorValue: (json['color'] as num?)?.toInt() ?? 0xFFE8A87C,
+      colorValue: (json['color'] as num?)?.toInt() ?? 0xFF14B8A6,
     );
   }
 
@@ -43,18 +55,18 @@ class NoteCategory {
   }
 }
 
-/// Colores sugeridos al crear una categoría.
+/// Colores sugeridos al crear/editar una categoría.
 class NoteCategoryColors {
   NoteCategoryColors._();
 
   static const presets = <int>[
-    0xFFE8A87C,
-    0xFFD4A574,
-    0xFF85C1E9,
-    0xFF82E0AA,
-    0xFFF1948A,
-    0xFFBB8FCE,
-    0xFFF7DC6F,
-    0xFF76D7C4,
+    0xFF14B8A6,
+    0xFF0EA5E9,
+    0xFF6366F1,
+    0xFF22C55E,
+    0xFFF59E0B,
+    0xFFEF4444,
+    0xFFEC4899,
+    0xFF8B5CF6,
   ];
 }

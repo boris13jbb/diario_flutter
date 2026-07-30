@@ -1,12 +1,12 @@
 {
-    "name": "diario_flutter",
-    "short_name": "diario_flutter",
+    "name": "NotasPro",
+    "short_name": "NotasPro",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#0F766E",
+    "theme_color": "#0F766E",
+    "description": "NotasPro — diario y notas offline-first con sincronización Firebase.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

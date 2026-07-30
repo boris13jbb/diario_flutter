@@ -1,276 +1,125 @@
-# 📱 Diario de Aprendizaje - Flutter
+# NotasPro (diario_flutter)
 
-Aplicación Flutter desarrollada como migración del proyecto Android nativo (Kotlin/Jetpack Compose). Registra anotaciones diarias de aprendizaje con soporte para audio y dibujo.
+Aplicación Flutter **offline-first** para crear, organizar y sincronizar notas personales.  
+Stack: Flutter · Riverpod · go_router · Drift (SQLite) · Firebase Auth · Cloud Firestore.
 
-## 🚀 Características Implementadas
+## Funcionalidades
 
-- ✅ **Estructura del proyecto** configurada con Clean Architecture
-- ✅ **Modelos de dominio** migrados (DiaryEntry, AudioMarker, DrawStroke, DrawPoint)
-- ✅ **Tema Material 3** con soporte para modo claro/oscuro
-- ✅ **Supabase** configurado para autenticación y base de datos
-- ✅ **Inyección de dependencias** con GetIt + Injectable
-- ✅ **Gestión de estado** con Riverpod
-- ⏳ Autenticación completa (Login, Registro, Recuperación)
-- ⏳ Base de datos local con Drift (SQLite)
-- ⏳ Repositorios (Auth, Diary)
-- ⏳ Pantallas de autenticación
-- ⏳ Pantalla principal (Home)
-- ⏳ Editor avanzado con audio y dibujo
-- ⏳ Navegación con go_router
+- Autenticación: registro, login, recuperación y cambio de contraseña
+- CRUD de notas con **guardado automático**
+- Categorías/carpetas con color
+- Etiquetas, prioridad, color de nota, fijadas, favoritos, archivo y **papelera**
+- Tareas con casillas, recordatorios, formato Markdown
+- Búsqueda por título, contenido, categoría y etiquetas
+- Orden por fecha, título, modificación y prioridad
+- Historial de versiones (local + Firestore)
+- Exportación Markdown / TXT / PDF / Word e impresión
+- Copia de seguridad JSON
+- Sincronización entre dispositivos (Drift ↔ Firestore)
+- Tema claro / oscuro / sistema
+- Panel de estadísticas en perfil
+- Resumen con IA **opcional** (`AI_API_KEY`)
+- PWA (manifest web NotasPro)
 
-## 📋 Requisitos Previos
+## Requisitos
 
-- Flutter SDK 3.41.4 o superior
-- Dart 3.11.1 o superior
-- Cuenta de Supabase
-- Android Studio / VS Code con extensiones de Flutter
+- Flutter SDK compatible con Dart `^3.11.1`
+- Proyecto Firebase (Auth + Firestore)
+- Windows / Android / iOS / Web / macOS / Linux según plataforma
 
-## ⚙️ Configuración
-
-### 1. Instalar Dependencias
+## Instalación
 
 ```bash
 cd diario_flutter
 flutter pub get
+dart run build_runner build --delete-conflicting-outputs
 ```
 
-### 2. Generar Código Automático
+## Configuración Firebase
 
-El proyecto usa code generation para modelos inmutables (freezed) y serialización JSON:
+1. Crea un proyecto en [Firebase Console](https://console.firebase.google.com/).
+2. Activa **Authentication → Email/Password**.
+3. Crea una base **Cloud Firestore**.
+4. Despliega las reglas de `firestore.rules`.
+5. Genera opciones con FlutterFire (`flutterfire configure`) o usa `lib/firebase_options.dart` existente.
+
+Índices: ver `firestore.indexes.json` si Firestore lo solicita.
+
+## Variables de entorno
+
+Ver `.env.example`. Para IA opcional:
 
 ```bash
-flutter pub run build_runner build --delete-conflicting-outputs
+flutter run --dart-define=AI_API_KEY=tu_clave
 ```
 
-Para desarrollo continuo con watch mode:
+Sin clave de IA la aplicación funciona con normalidad; solo la función de resumen quedará deshabilitada.
 
-```bash
-flutter pub run build_runner watch --delete-conflicting-outputs
-```
+## Base de datos local
 
-### 3. Configurar Supabase
+- Motor: **Drift / SQLite** (`diario.sqlite` en documentos de la app)
+- Versión de esquema actual: **3**
+- Migración automática desde v2 (añade flags de organización, papelera, tareas, adjuntos, etc.)
+- Tabla adicional: `note_versions` (historial)
 
-Las credenciales de Supabase están configuradas en `lib/main.dart`:
+No requiere migraciones SQL manuales en el dispositivo: Drift las aplica al abrir la app.
 
-```dart
-await Supabase.initialize(
-  url: 'https://swirjlhuxcpcfuvketcv.supabase.co',
-  anonKey: 'sb_publishable_cVlswOY8djMMTWsdV222Hw_hJRUOmba',
-);
-```
-
-**Importante**: Reemplaza estas credenciales con las de tu propio proyecto de Supabase.
-
-### 4. Configurar Base de Datos en Supabase
-
-Ejecuta este SQL en el SQL Editor de Supabase:
-
-```sql
--- Crear tabla para las entradas del diario
-CREATE TABLE diary_entries (
-    id TEXT PRIMARY KEY,
-    date TEXT NOT NULL,
-    title TEXT NOT NULL,
-    content TEXT NOT NULL,
-    last_updated BIGINT NOT NULL,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    synced BOOLEAN DEFAULT false,
-    audio_markers JSONB DEFAULT '[]',
-    draw_strokes JSONB DEFAULT '[]',
-    audio_file_path TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Habilitar Row Level Security (RLS)
-ALTER TABLE diary_entries ENABLE ROW LEVEL SECURITY;
-
--- Política: Los usuarios solo pueden ver sus propias entradas
-CREATE POLICY "Users can view own entries"
-    ON diary_entries FOR SELECT
-    USING (auth.uid() = user_id);
-
--- Política: Los usuarios solo pueden insertar sus propias entradas
-CREATE POLICY "Users can insert own entries"
-    ON diary_entries FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
-
--- Política: Los usuarios solo pueden actualizar sus propias entradas
-CREATE POLICY "Users can update own entries"
-    ON diary_entries FOR UPDATE
-    USING (auth.uid() = user_id);
-
--- Política: Los usuarios solo pueden eliminar sus propias entradas
-CREATE POLICY "Users can delete own entries"
-    ON diary_entries FOR DELETE
-    USING (auth.uid() = user_id);
-
--- Índices para mejorar consultas
-CREATE INDEX idx_diary_entries_date ON diary_entries(date DESC);
-CREATE INDEX idx_diary_entries_user_id ON diary_entries(user_id);
-CREATE INDEX idx_diary_entries_synced ON diary_entries(synced);
-```
-
-### 5. Ejecutar la Aplicación
+## Ejecución en desarrollo
 
 ```bash
 flutter run
+# o plataforma concreta:
+flutter run -d windows
+flutter run -d chrome
 ```
 
-## 🏗️ Arquitectura
+## Compilación para producción
 
-El proyecto sigue Clean Architecture con las siguientes capas:
-
-```
-lib/
-├── core/                      # Núcleo de la aplicación
-│   ├── constants/            # Constantes
-│   ├── theme/                # Tema Material 3
-│   ├── utils/                # Utilidades
-│   └── di/                   # Inyección de dependencias
-│
-├── data/                      # Capa de datos
-│   ├── local/                # Base de datos local (Drift)
-│   │   ├── dao/
-│   │   └── entities/
-│   ├── remote/               # Servicios Supabase
-│   └── repositories/         # Implementación de repositorios
-│
-├── domain/                    # Capa de dominio
-│   ├── models/               # Modelos de negocio
-│   └── usecases/             # Casos de uso
-│
-└── presentation/              # Capa de presentación
-    ├── screens/              # Pantallas
-    ├── viewmodels/           # ViewModels (Riverpod)
-    └── widgets/              # Widgets reutilizables
-```
-
-## 📦 Dependencias Principales
-
-### UI & Diseño
-- **google_fonts**: Tipografía Roboto
-- **Material 3**: Sistema de diseño moderno
-
-### Gestión de Estado
-- **flutter_riverpod**: Gestión de estado reactivo
-- **hooks_riverpod**: Hooks para Riverpod
-
-### Navegación
-- **go_router**: Navegación declarativa y type-safe
-
-### Backend & Base de Datos
-- **supabase_flutter**: Cliente de Supabase
-- **drift**: Base de datos SQLite reactiva
-- **sqlite3_flutter_libs**: Librerías nativas de SQLite
-
-### Multimedia
-- **record**: Grabación de audio
-- **audioplayers**: Reproducción de audio
-- **permission_handler**: Gestión de permisos
-
-### Utilidades
-- **get_it**: Service locator
-- **injectable**: Inyección de dependencias automática
-- **freezed**: Clases inmutables con code generation
-- **json_serializable**: Serialización JSON
-- **intl**: Internacionalización y formato de fechas
-- **uuid**: Generación de IDs únicos
-
-## 🔧 Scripts Útiles
-
-### Obtener dependencias
 ```bash
-flutter pub get
+flutter build apk --release
+flutter build appbundle --release
+flutter build windows --release
+flutter build web --release
 ```
 
-### Generar código automático
-```bash
-flutter pub run build_runner build --delete-conflicting-outputs
-```
+## Pruebas
 
-### Ejecutar tests
 ```bash
 flutter test
-```
-
-### Analizar código
-```bash
 flutter analyze
 ```
 
-### Formatear código
-```bash
-dart format .
+## Datos de demostración
+
+No hay usuarios demo con contraseñas en el repositorio.  
+Crea una cuenta desde **Registro** con tu email.
+
+## Arquitectura
+
+```
+lib/
+├── core/           # rutas, tema, DI, constantes
+├── data/           # Drift, Firestore, repositorios
+├── domain/         # modelos
+├── presentation/   # pantallas Fluent + viewmodels
+└── services/       # export, favoritos, adjuntos, IA, etc.
 ```
 
-### Construir APK (Android)
-```bash
-flutter build apk --release
-```
+## Solución de errores frecuentes
 
-### Construir IPA (iOS)
-```bash
-flutter build ios --release
-```
+| Problema | Solución |
+|----------|----------|
+| Fallo de `build_runner` | `flutter clean && flutter pub get && dart run build_runner build --delete-conflicting-outputs` |
+| Índice Firestore faltante | Abre el enlace del error en consola y crea el índice |
+| Sync sin notas | Verifica que el `user_id` coincida y que las rules estén desplegadas |
+| Export en web | Preferir desktop/móvil; export usa sistema de archivos (`dart:io`) |
+| Notificaciones | Requieren permisos del SO; no disponibles en todos los targets |
 
-## 🎯 Próximos Pasos
+## Documentación de auditoría
 
-1. **Implementar autenticación**: Login, registro y recuperación de contraseña
-2. **Configurar base de datos local**: Drift con DAOs y entidades
-3. **Crear repositorios**: AuthRepository y DiaryRepository
-4. **Implementar ViewModels**: Con Riverpod para gestión de estado
-5. **Crear pantallas**: Auth, Home, Editor, Profile
-6. **Configurar navegación**: Con go_router
-7. **Implementar editor avanzado**: Soporte para audio y dibujo
-8. **Agregar tests**: Unit tests e integration tests
+- `AUDITORIA_FUNCIONALIDADES_NOTAS.md`
+- `PLAN_IMPLEMENTACION_NOTAS.md`
 
-## 📝 Notas de Desarrollo
+## Licencia
 
-### Diferencias con el Proyecto Android
-
-| Android Nativo | Flutter |
-|----------------|---------|
-| Kotlin | Dart |
-| Jetpack Compose | Flutter Widgets |
-| Room | Drift (SQLite) |
-| Hilt | GetIt + Injectable |
-| StateFlow | Riverpod |
-| Navigation Compose | go_router |
-| Coroutines | async/await |
-
-### Decisiones de Diseño
-
-1. **Freezed para modelos**: Proporciona inmutabilidad, pattern matching y copyWith automáticamente
-2. **Riverpod para estado**: Más flexible que Provider y mejor integración con Flutter
-3. **Drift para base de datos**: Reactivo, type-safe y con excelente soporte para migrations
-4. **GetIt + Injectable**: Inyección de dependencias automática y type-safe
-
-## 🐛 Solución de Problemas
-
-### Error de build_runner
-Si encuentras errores al generar código:
-
-```bash
-flutter clean
-flutter pub get
-flutter pub run build_runner build --delete-conflicting-outputs
-```
-
-### Error de Supabase
-Verifica que las credenciales sean correctas y que la tabla exista en Supabase.
-
-### Error de permisos (audio)
-Asegúrate de configurar los permisos en AndroidManifest.xml e Info.plist
-
-## 📄 Licencia
-
-Este proyecto es de código abierto y está disponible para uso educativo.
-
-## 👨‍💻 Autor
-
-Migración del proyecto Android nativo a Flutter como ejemplo de desarrollo multiplataforma.
-
----
-
-**¡Feliz desarrollo! 🚀**
+Uso educativo / proyecto personal.

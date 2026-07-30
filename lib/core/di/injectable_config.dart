@@ -4,6 +4,7 @@ import '../../data/remote/firestore_category_service.dart';
 import '../../data/remote/firestore_diary_service.dart';
 import '../../data/local/database.dart';
 import '../../data/local/dao/diary_dao.dart';
+import '../../data/local/dao/note_versions_dao.dart';
 
 /// Configuración del módulo principal de inyección de dependencias
 @module
@@ -26,4 +27,7 @@ abstract class InjectableConfig {
   // Registro de DiaryDao
   @lazySingleton
   DiaryDao diaryDao(AppDatabase db) => db.diaryDao;
+
+  @lazySingleton
+  NoteVersionsDao noteVersionsDao(AppDatabase db) => db.noteVersionsDao;
 }
