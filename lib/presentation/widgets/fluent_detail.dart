@@ -447,6 +447,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
               case 'export_word':
                 await _exportEntry(NoteExportFormat.word);
                 break;
+              case 'share':
+                await _shareEntry();
+                break;
               case 'print':
                 await ref
                     .read(diaryViewModelProvider.notifier)
@@ -485,6 +488,7 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
             const PopupMenuItem(value: 'export_txt', child: Text('Exportar TXT')),
             const PopupMenuItem(value: 'export_pdf', child: Text('Exportar PDF')),
             const PopupMenuItem(value: 'export_word', child: Text('Exportar Word')),
+            const PopupMenuItem(value: 'share', child: Text('Compartir…')),
             const PopupMenuItem(value: 'print', child: Text('Imprimir')),
             const PopupMenuItem(value: 'copy', child: Text('Copiar contenido')),
             if (entry!.isDeleted) ...[
@@ -599,6 +603,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
             case 'export_word':
               await _exportEntry(NoteExportFormat.word);
               break;
+            case 'share':
+              await _shareEntry();
+              break;
             case 'print':
               await ref
                   .read(diaryViewModelProvider.notifier)
@@ -625,6 +632,7 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
           const PopupMenuItem(value: 'export_txt', child: Text('Exportar TXT')),
           const PopupMenuItem(value: 'export_pdf', child: Text('Exportar PDF')),
           const PopupMenuItem(value: 'export_word', child: Text('Exportar Word')),
+          const PopupMenuItem(value: 'share', child: Text('Compartir…')),
           const PopupMenuItem(value: 'print', child: Text('Imprimir')),
           const PopupMenuItem(value: 'copy', child: Text('Copiar contenido')),
           if (entry!.isDeleted)
@@ -1018,6 +1026,67 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
         content: Text('Exportado. Ruta copiada:\n$path'),
         duration: const Duration(seconds: 4),
       ),
+    );
+  }
+
+  Future<void> _shareEntry() async {
+    if (entry == null) return;
+
+    final format = await showDialog<NoteExportFormat>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Compartir en formato'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, NoteExportFormat.markdown),
+            child: const Text('Markdown (.md)'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, NoteExportFormat.txt),
+            child: const Text('Texto (.txt)'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, NoteExportFormat.pdf),
+            child: const Text('PDF (.pdf)'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, NoteExportFormat.word),
+            child: const Text('Word (.doc)'),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (format == null || !mounted) return;
+
+    final box = context.findRenderObject() as RenderBox?;
+    final origin =
+        box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+
+    final ok = await ref.read(diaryViewModelProvider.notifier).shareEntry(
+          entry!.id,
+          format: format,
+          sharePositionOrigin: origin,
+        );
+    if (!mounted) return;
+    if (!ok) {
+      final error = ref.read(diaryViewModelProvider).error;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'No se pudo compartir'),
+          backgroundColor: FluentColors.error,
+        ),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Listo para compartir')),
     );
   }
 

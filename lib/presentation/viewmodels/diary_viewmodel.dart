@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show Rect;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/category_filter.dart';
@@ -605,9 +606,12 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
 
     try {
       await _loadFavorites(userId);
+      // Categorías antes que notas: asegura push de catálogo pendiente a Firestore.
       await _loadCategories(userId);
 
       final result = await _diaryRepository.syncAll(userId);
+      // Reintento de categorías tras sync de notas (red ya validada).
+      await _loadCategories(userId);
       _lastSyncAttempt = DateTime.now();
 
       final entries = await _diaryRepository.getAllEntries(userId);
@@ -751,6 +755,42 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
             'No se pudo exportar: ${e.toString().replaceAll('Exception: ', '')}',
       );
       return null;
+    }
+  }
+
+  /// Comparte la nota con el diálogo nativo del sistema (junto a exportar).
+  Future<bool> shareEntry(
+    String entryId, {
+    NoteExportFormat format = NoteExportFormat.markdown,
+    Rect? sharePositionOrigin,
+  }) async {
+    DiaryEntry? entry;
+    for (final e in state.entries) {
+      if (e.id == entryId) {
+        entry = e;
+        break;
+      }
+    }
+    entry ??= await _diaryRepository.getEntryById(entryId);
+    if (entry == null) {
+      state = state.copyWith(error: 'Nota no encontrada');
+      return false;
+    }
+
+    try {
+      await _exportService.shareEntry(
+        entry,
+        format: format,
+        categories: state.categories,
+        sharePositionOrigin: sharePositionOrigin,
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        error:
+            'No se pudo compartir: ${e.toString().replaceAll('Exception: ', '')}',
+      );
+      return false;
     }
   }
 

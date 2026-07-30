@@ -8,8 +8,9 @@ class FirestoreCategoryMapper {
   static Map<String, dynamic> toFirestore(NoteCategory category, String userId) {
     return {
       'user_id': userId,
-      'name': category.name,
-      'color': category.colorValue,
+      'name': category.name.trim(),
+      // ARGB en rango int32 firmado (compatible con clientes Android/Firestore).
+      'color': category.colorValue.toSigned(32),
       'updated_at': FieldValue.serverTimestamp(),
     };
   }
@@ -20,10 +21,11 @@ class FirestoreCategoryMapper {
     final data = doc.data();
     if (data == null) return null;
 
+    final rawColor = (data['color'] as num?)?.toInt();
     return NoteCategory(
       id: doc.id,
-      name: data['name']?.toString() ?? '',
-      colorValue: (data['color'] as num?)?.toInt() ?? 0xFFE8A87C,
+      name: data['name']?.toString().trim() ?? '',
+      colorValue: rawColor == null ? 0xFFE8A87C : rawColor.toUnsigned(32),
     );
   }
 }

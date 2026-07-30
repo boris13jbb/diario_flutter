@@ -20,13 +20,25 @@ service cloud.firestore {
     }
 
     match /note_categories/{categoryId} {
-      allow read, update, delete: if isSignedIn()
+      allow read: if isSignedIn()
         && request.auth.uid == resource.data.user_id;
+
       allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.user_id
+        && request.resource.data.keys().hasAll(['user_id', 'name', 'color'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.color is int;
+
+      allow update: if isSignedIn()
+        && request.auth.uid == resource.data.user_id
         && request.auth.uid == request.resource.data.user_id
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.color is int;
+
+      allow delete: if isSignedIn()
+        && request.auth.uid == resource.data.user_id;
     }
 
     match /user_settings/{userId} {
