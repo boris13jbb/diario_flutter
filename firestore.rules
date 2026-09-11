@@ -12,11 +12,61 @@ service cloud.firestore {
         : request.auth.token.email.lower();
     }
 
+    function notePath(noteId) {
+      return /databases/$(database)/documents/diary_entries/$(noteId);
+    }
+
+    function noteExists(noteId) {
+      return exists(notePath(noteId));
+    }
+
+    function noteOwnerId(noteId) {
+      return get(notePath(noteId)).data.user_id;
+    }
+
+    function isNoteOwner(noteId) {
+      return isSignedIn()
+        && noteId is string
+        && noteId.size() > 0
+        && noteExists(noteId)
+        && noteOwnerId(noteId) == request.auth.uid;
+    }
+
+    function shareDocId(noteId) {
+      return noteId + '_' + emailLower();
+    }
+
+    function sharePath(noteId) {
+      return /databases/$(database)/documents/shared_notes/$(shareDocId(noteId));
+    }
+
+    function isAuthorizedOnNote(noteId) {
+      return isSignedIn()
+        && emailLower().size() > 0
+        && noteId is string
+        && noteId.size() > 0
+        && exists(sharePath(noteId))
+        && get(sharePath(noteId)).data.note_id == noteId
+        && get(sharePath(noteId)).data.shared_with_email == emailLower()
+        && get(sharePath(noteId)).data.owner_id == noteOwnerId(noteId);
+    }
+
+    function canAccessNote(noteId) {
+      return isNoteOwner(noteId) || isAuthorizedOnNote(noteId);
+    }
+
     match /diary_entries/{entryId} {
-      allow read, update, delete: if isSignedIn()
+      allow get, list: if isSignedIn()
         && request.auth.uid == resource.data.user_id;
       allow create: if isSignedIn()
         && request.auth.uid == request.resource.data.user_id;
+      // El UID debe ser dueño del documento actual y del resultante.
+      // Así no se puede transferir la nota cambiando user_id.
+      allow update: if isSignedIn()
+        && request.auth.uid == resource.data.user_id
+        && request.auth.uid == request.resource.data.user_id;
+      allow delete: if isSignedIn()
+        && request.auth.uid == resource.data.user_id;
     }
 
     match /note_categories/{categoryId} {
@@ -59,20 +109,52 @@ service cloud.firestore {
       );
       allow create: if isSignedIn()
         && request.resource.data.owner_id == request.auth.uid
+        && request.resource.data.note_id is string
+        && request.resource.data.shared_with_email is string
+        && request.resource.data.shared_with_email.size() > 3
         && request.resource.data.permission in ['read', 'edit']
-        && request.resource.data.shared_with_email is string;
-      allow update, delete: if isSignedIn()
+        && shareId == request.resource.data.note_id + '_' + request.resource.data.shared_with_email
+        && noteExists(request.resource.data.note_id)
+        && noteOwnerId(request.resource.data.note_id) == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.owner_id == request.auth.uid
+        && request.resource.data.owner_id == resource.data.owner_id
+        && request.resource.data.note_id == resource.data.note_id
+        && request.resource.data.shared_with_email == resource.data.shared_with_email
+        && request.resource.data.permission in ['read', 'edit'];
+      allow delete: if isSignedIn()
         && resource.data.owner_id == request.auth.uid;
     }
 
     match /note_comments/{commentId} {
-      allow read: if isSignedIn();
+      // Propietario: la consulta debe filtrar owner_id == auth.uid.
+      allow read: if isSignedIn()
+        && resource.data.owner_id == request.auth.uid
+        && resource.data.note_id is string;
+      // Usuario autorizado sobre la nota vinculada.
+      allow read: if isAuthorizedOnNote(resource.data.note_id)
+        && resource.data.note_id is string
+        && resource.data.owner_id is string;
+
       allow create: if isSignedIn()
         && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.note_id is string
+        && request.resource.data.owner_id is string
         && request.resource.data.text is string
-        && request.resource.data.text.size() > 0;
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 4000
+        && noteExists(request.resource.data.note_id)
+        && request.resource.data.owner_id == noteOwnerId(request.resource.data.note_id)
+        && canAccessNote(request.resource.data.note_id);
+
+      allow update: if false;
+
       allow delete: if isSignedIn()
-        && resource.data.user_id == request.auth.uid;
+        && resource.data.note_id is string
+        && (
+          resource.data.user_id == request.auth.uid
+          || isNoteOwner(resource.data.note_id)
+        );
     }
 
     match /activity_logs/{logId} {
