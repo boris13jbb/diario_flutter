@@ -15,7 +15,11 @@ import {
   collection,
   query,
   where,
+  orderBy,
+  limit,
+  documentId,
   getDocs,
+  Timestamp,
 } from 'firebase/firestore';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -42,6 +46,33 @@ const noteB = {
 function db(uid, email) {
   if (!uid) return env.unauthenticatedContext().firestore();
   return env.authenticatedContext(uid, { email }).firestore();
+}
+
+/** Misma fórmula que NoteShareService.accessDocId / shareDocId en rules. */
+function accessDocId(noteId, email) {
+  return `${noteId}_${email.trim().toLowerCase()}`;
+}
+
+function commentsQuery(firestore, noteId, ownerId) {
+  return getDocs(
+    query(
+      collection(firestore, 'note_comments'),
+      where('note_id', '==', noteId),
+      where('owner_id', '==', ownerId),
+      orderBy('created_at', 'asc'),
+    ),
+  );
+}
+
+function scopedEntryQuery(firestore, userId, entryId) {
+  return getDocs(
+    query(
+      collection(firestore, 'diary_entries'),
+      where('user_id', '==', userId),
+      where(documentId(), '==', entryId),
+      limit(1),
+    ),
+  );
 }
 
 let failed = 0;
@@ -71,6 +102,21 @@ await env.withSecurityRulesDisabled(async (context) => {
     owner_id: 'user-b',
     user_id: 'user-b',
     text: 'secreto',
+    created_at: Timestamp.fromDate(new Date('2026-09-10T12:00:00Z')),
+  });
+  await setDoc(doc(admin, 'note_comments/comment-b-2'), {
+    note_id: 'note-b',
+    owner_id: 'user-b',
+    user_id: 'user-b',
+    text: 'segundo',
+    created_at: Timestamp.fromDate(new Date('2026-09-10T13:00:00Z')),
+  });
+  // Concesión legacy UUID (formato anterior).
+  await setDoc(doc(admin, 'shared_notes/legacy-uuid-share-001'), {
+    note_id: 'note-b',
+    owner_id: 'user-b',
+    shared_with_email: 'legacy@example.com',
+    permission: 'read',
   });
 });
 
@@ -115,6 +161,33 @@ await check('el propietario sí puede actualizar sin cambiar user_id', async () 
   );
 });
 
+await check('GET ENTRY OWNED', async () => {
+  const snap = await assertSucceeds(
+    scopedEntryQuery(db('user-a', 'a@example.com'), 'user-a', 'note-a'),
+  );
+  if (snap.size !== 1 || snap.docs[0].id !== 'note-a') {
+    throw new Error('Debía devolver exactamente la nota propia');
+  }
+  console.log('GET ENTRY OWNED        PASS');
+});
+
+await check('GET ENTRY MISSING', async () => {
+  // documentId + user_id sobre un id inexistente: Rules evalúa resource nulo
+  // y responde permission-denied. El servicio Dart lo traduce a null.
+  await assertFails(
+    scopedEntryQuery(db('user-a', 'a@example.com'), 'user-a', 'aun-no-existe'),
+  );
+  console.log('GET ENTRY MISSING      PASS');
+});
+
+await check('GET ENTRY OTHER USER', async () => {
+  await assertFails(
+    scopedEntryQuery(db('user-a', 'a@example.com'), 'user-a', 'note-b'),
+  );
+  await assertFails(getDoc(doc(db('user-a', 'a@example.com'), 'diary_entries/note-b')));
+  console.log('GET ENTRY OTHER USER   DENIED/NULL SEGURO');
+});
+
 await check('una nota inexistente consultada por user_id no es permission-denied', async () => {
   const snap = await assertSucceeds(
     getDocs(
@@ -145,38 +218,158 @@ await check('usuario A no lee los ajustes de usuario B', async () => {
   await assertFails(getDoc(doc(db('user-a', 'a@example.com'), 'user_settings/user-b')));
 });
 
-await check('usuario A no lee comentarios de una nota ajena', async () => {
-  await assertFails(getDoc(doc(db('user-a', 'a@example.com'), 'note_comments/comment-b')));
+await check('COMMENTS OWNER QUERY', async () => {
+  const snap = await assertSucceeds(
+    commentsQuery(db('user-b', 'b@example.com'), 'note-b', 'user-b'),
+  );
+  if (snap.size < 2) {
+    throw new Error(`El propietario debía listar sus comentarios, obtuvo ${snap.size}`);
+  }
+  console.log('COMMENTS OWNER QUERY          PASS');
 });
 
-await check('el propietario sí lee sus comentarios', async () => {
-  await assertSucceeds(getDoc(doc(db('user-b', 'b@example.com'), 'note_comments/comment-b')));
+await check('COMMENTS UNAUTHORIZED QUERY', async () => {
+  await assertFails(
+    commentsQuery(db('user-c', 'c@example.com'), 'note-b', 'user-b'),
+  );
+  console.log('COMMENTS UNAUTHORIZED QUERY   DENIED');
 });
 
-await check('usuario no autorizado no lee comentarios de la nota', async () => {
-  await assertFails(getDoc(doc(db('user-c', 'c@example.com'), 'note_comments/comment-b')));
-});
-
-await check('el acceso se concede solo en shared_notes', async () => {
+await check('COMMENTS SHARED QUERY', async () => {
+  const shareId = accessDocId('note-b', 'c@example.com');
   await assertSucceeds(
-    setDoc(doc(db('user-b', 'b@example.com'), 'shared_notes/note-b_c@example.com'), {
+    setDoc(doc(db('user-b', 'b@example.com'), `shared_notes/${shareId}`), {
       note_id: 'note-b',
       owner_id: 'user-b',
       shared_with_email: 'c@example.com',
       permission: 'read',
     }),
   );
-});
-
-await check('usuario autorizado lee comentarios de la nota compartida', async () => {
-  await assertSucceeds(getDoc(doc(db('user-c', 'c@example.com'), 'note_comments/comment-b')));
-});
-
-await check('al revocar el acceso deja de poder leer comentarios', async () => {
-  await assertSucceeds(
-    deleteDoc(doc(db('user-b', 'b@example.com'), 'shared_notes/note-b_c@example.com')),
+  const snap = await assertSucceeds(
+    commentsQuery(db('user-c', 'c@example.com'), 'note-b', 'user-b'),
   );
-  await assertFails(getDoc(doc(db('user-c', 'c@example.com'), 'note_comments/comment-b')));
+  if (snap.size < 1) {
+    throw new Error('El usuario compartido debía listar comentarios');
+  }
+  console.log('COMMENTS SHARED QUERY         PASS');
+});
+
+await check('COMMENTS REVOKED QUERY', async () => {
+  const shareId = accessDocId('note-b', 'c@example.com');
+  await assertSucceeds(
+    deleteDoc(doc(db('user-b', 'b@example.com'), `shared_notes/${shareId}`)),
+  );
+  await assertFails(
+    commentsQuery(db('user-c', 'c@example.com'), 'note-b', 'user-b'),
+  );
+  console.log('COMMENTS REVOKED QUERY        DENIED');
+});
+
+await check('LEGACY SHARE TEST', async () => {
+  // El UUID legacy no autoriza: Rules solo mira el documento canónico.
+  await assertFails(
+    commentsQuery(db('user-legacy', 'legacy@example.com'), 'note-b', 'user-b'),
+  );
+  const canonical = accessDocId('note-b', 'legacy@example.com');
+  await assertSucceeds(
+    setDoc(doc(db('user-b', 'b@example.com'), `shared_notes/${canonical}`), {
+      note_id: 'note-b',
+      owner_id: 'user-b',
+      shared_with_email: 'legacy@example.com',
+      permission: 'read',
+    }),
+  );
+  const snap = await assertSucceeds(
+    commentsQuery(db('user-legacy', 'legacy@example.com'), 'note-b', 'user-b'),
+  );
+  if (snap.size < 1) {
+    throw new Error('Tras crear el canónico, el acceso legacy migrado debe funcionar');
+  }
+  console.log('LEGACY SHARE TEST             PASS');
+});
+
+await check('CANONICAL SHARE ID', async () => {
+  const email = '  Ana@Example.com  ';
+  const expected = accessDocId('note-a', email);
+  if (expected !== 'note-a_ana@example.com') {
+    throw new Error(`Fórmula canónica incorrecta: ${expected}`);
+  }
+  await assertSucceeds(
+    setDoc(doc(db('user-a', 'a@example.com'), `shared_notes/${expected}`), {
+      note_id: 'note-a',
+      owner_id: 'user-a',
+      shared_with_email: 'ana@example.com',
+      permission: 'read',
+    }),
+  );
+  // Mayúsculas en shared_with_email: rechazado por isValidShareEmail.
+  await assertFails(
+    setDoc(doc(db('user-a', 'a@example.com'), 'shared_notes/note-a_Ana@Example.com'), {
+      note_id: 'note-a',
+      owner_id: 'user-a',
+      shared_with_email: 'Ana@Example.com',
+      permission: 'read',
+    }),
+  );
+  // `/` no es un document id válido; el cliente o Rules deben rechazarlo.
+  let slashRejected = false;
+  try {
+    await setDoc(
+      doc(db('user-a', 'a@example.com'), 'shared_notes/note-a_bad_slash@example.com'),
+      {
+        note_id: 'note-a',
+        owner_id: 'user-a',
+        shared_with_email: 'bad/slash@example.com',
+        permission: 'read',
+      },
+    );
+  } catch (_) {
+    slashRejected = true;
+  }
+  if (!slashRejected) {
+    throw new Error('Un correo con / debía rechazarse');
+  }
+  console.log('CANONICAL SHARE ID            PASS');
+});
+
+await check('solo propietario crea share y no auto-concede nota ajena', async () => {
+  await assertFails(
+    setDoc(doc(db('user-a', 'a@example.com'), 'shared_notes/note-b_a@example.com'), {
+      note_id: 'note-b',
+      owner_id: 'user-a',
+      shared_with_email: 'a@example.com',
+      permission: 'read',
+    }),
+  );
+});
+
+await check('no se modifican note_id owner_id ni email del share', async () => {
+  const shareId = accessDocId('note-a', 'ana@example.com');
+  await assertFails(
+    updateDoc(doc(db('user-a', 'a@example.com'), `shared_notes/${shareId}`), {
+      note_id: 'otra',
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db('user-a', 'a@example.com'), `shared_notes/${shareId}`), {
+      owner_id: 'user-b',
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db('user-a', 'a@example.com'), `shared_notes/${shareId}`), {
+      shared_with_email: 'otra@example.com',
+    }),
+  );
+  await assertSucceeds(
+    updateDoc(doc(db('user-a', 'a@example.com'), `shared_notes/${shareId}`), {
+      permission: 'edit',
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db('user-a', 'a@example.com'), `shared_notes/${shareId}`), {
+      permission: 'admin',
+    }),
+  );
 });
 
 await check('usuario A no crea un comentario haciéndose pasar por B', async () => {
@@ -186,17 +379,6 @@ await check('usuario A no crea un comentario haciéndose pasar por B', async () 
       owner_id: 'user-a',
       user_id: 'user-b',
       text: 'no soy B',
-    }),
-  );
-});
-
-await check('usuario A no se concede acceso a una nota de B', async () => {
-  await assertFails(
-    setDoc(doc(db('user-a', 'a@example.com'), 'shared_notes/note-b_a@example.com'), {
-      note_id: 'note-b',
-      owner_id: 'user-a',
-      shared_with_email: 'a@example.com',
-      permission: 'read',
     }),
   );
 });

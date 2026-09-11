@@ -250,6 +250,13 @@ void main() {
 
         expect(await probe.getEntryById(missingId, userId: userA.uid), isNull);
         await _expectLegacyGetDenied(missingId);
+        final ownedAgain = await probe.getEntryById(
+          onlineId,
+          userId: userA.uid,
+        );
+        expect(ownedAgain?.id, onlineId);
+        expect(ownedAgain?.userId, userA.uid);
+        _pass('GET ENTRY SCOPED     PASS');
         await deviceA.repository.createEntry(
           _note(
             id: missingId,
@@ -347,7 +354,7 @@ class _EmulatorHarness {
   static Future<_EmulatorHarness> start() async {
     final firestore = _endpoint(
       Platform.environment['FIRESTORE_EMULATOR_HOST'],
-      fallbackPort: 8080,
+      fallbackPort: 8085,
     );
     final auth = _endpoint(
       Platform.environment['FIREBASE_AUTH_EMULATOR_HOST'],

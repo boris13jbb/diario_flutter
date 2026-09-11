@@ -69,11 +69,16 @@ class FirestoreDiaryService implements DiaryRemoteDataSource {
     return entries;
   }
 
-  /// Busca la nota solo entre documentos cuyo `user_id` es [userId].
+  /// Busca una nota del usuario sin descargar todas sus entradas.
   ///
-  /// No usa `get()` ni un filtro por id: si la nota aún no existe, esas
-  /// lecturas se evalúan como `permission-denied`. La consulta limitada a
-  /// `user_id` responde vacía y este método retorna null.
+  /// Usa `user_id` + [FieldPath.documentId] con `limit(1)`. No usa
+  /// `_collection.doc(entryId).get()` ni [getAllEntries].
+  ///
+  /// Con las reglas actuales, un documento inexistente o de otro usuario hace
+  /// que esa consulta acotada responda `permission-denied` (evaluación con
+  /// `resource` nulo o no propio). Ese resultado se traduce a `null` porque el
+  /// contrato es «nota de [userId] o ausente», no un fallo de autenticación de
+  /// listado. Cualquier otro error de Firebase se propaga.
   @override
   Future<DiaryEntry?> getEntryById(
     String entryId, {
@@ -81,12 +86,21 @@ class FirestoreDiaryService implements DiaryRemoteDataSource {
   }) async {
     if (entryId.isEmpty || userId.isEmpty) return null;
     try {
-      final owned = await _fetchEntriesForUser(userId, withDateOrder: false);
-      for (final entry in owned) {
-        if (entry.id == entryId && entry.userId == userId) return entry;
+      final snapshot = await _collection
+          .where('user_id', isEqualTo: userId)
+          .where(FieldPath.documentId, isEqualTo: entryId)
+          .limit(1)
+          .get();
+      if (snapshot.docs.isEmpty) return null;
+      final entry = FirestoreDiaryMapper.tryFromDocument(snapshot.docs.first);
+      if (entry == null || entry.userId != userId || entry.id != entryId) {
+        return null;
       }
-      return null;
+      return entry;
     } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        return null;
+      }
       throw Exception('Error al obtener entrada: ${e.message ?? e.code}');
     } catch (e) {
       throw Exception('Error al obtener entrada: $e');

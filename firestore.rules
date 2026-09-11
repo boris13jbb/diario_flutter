@@ -33,7 +33,18 @@ service cloud.firestore {
     }
 
     function shareDocId(noteId) {
+      // Misma fórmula que NoteShareService.accessDocId: noteId + '_' + email.lower().
+      // Solo trim/lower; no se sustituyen caracteres (Rules no puede reproducir
+      // transformaciones arbitrarias del cliente).
       return noteId + '_' + emailLower();
+    }
+
+    function isValidShareEmail(email) {
+      return email is string
+        && email.size() > 3
+        && email == email.lower()
+        && email.matches('.*@.*')
+        && !email.matches('.*/.*');
     }
 
     function sharePath(noteId) {
@@ -110,8 +121,8 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.owner_id == request.auth.uid
         && request.resource.data.note_id is string
-        && request.resource.data.shared_with_email is string
-        && request.resource.data.shared_with_email.size() > 3
+        && request.resource.data.note_id.size() > 0
+        && isValidShareEmail(request.resource.data.shared_with_email)
         && request.resource.data.permission in ['read', 'edit']
         && shareId == request.resource.data.note_id + '_' + request.resource.data.shared_with_email
         && noteExists(request.resource.data.note_id)
