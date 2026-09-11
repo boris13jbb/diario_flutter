@@ -5,19 +5,26 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:diario_flutter/firebase_options.dart';
 import 'package:diario_flutter/services/note_share_service.dart';
+import 'package:diario_flutter/services/shared_notes_migration.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/widgets.dart';
 
 /// Migración idempotente de `shared_notes` UUID → id canónico.
 ///
 /// Por defecto es DRY RUN. No borra legacy. Solo con `--apply` escribe
-/// el documento canónico si falta. Nunca ejecutes `--apply` en producción
-/// desde esta tarea de hardening.
+/// el documento canónico si falta y el permission es `read`|`edit`.
 ///
-/// Uso:
-///   dart run tool/migrate_shared_notes.dart
-///   dart run tool/migrate_shared_notes.dart --apply
-///   dart run tool/migrate_shared_notes.dart --emulator
+/// En este proyecto `dart run tool/migrate_shared_notes.dart` y
+/// `flutter pub run tool/migrate_shared_notes.dart` fallan al compilar por
+/// plugins nativos Firebase/FFI. El comando real de verificación en emulador:
+///
+///   tool\run_migrate_shared_notes_dry_run.ps1
+///
+/// (ejecuta `flutter test test/shared_notes_migration_emulator_dry_run_test.dart`
+/// dentro de `firebase emulators:exec`).
+///
+/// La lógica pura vive en [SharedNotesMigration] y se cubre con unit tests.
+/// Nunca ejecutes `--apply` en producción sin autorización explícita.
 Future<void> main(List<String> args) async {
   final apply = args.contains('--apply');
   final useEmulator = args.contains('--emulator');
@@ -38,98 +45,76 @@ Future<void> main(List<String> args) async {
   final firestore = FirebaseFirestore.instance;
   final snap = await firestore.collection(NoteShareService.collection).get();
 
-  var legacy = 0;
-  var alreadyMigrated = 0;
-  var wouldCreate = 0;
-  var created = 0;
-  var conflicts = 0;
-  var errors = 0;
-
   print(apply ? 'MODO: APPLY' : 'MODO: DRY RUN (por defecto)');
   print('Documentos en shared_notes: ${snap.docs.length}');
 
+  final classified = <SharedNotesMigrationItem>[];
+  var writes = 0;
+
   for (final doc in snap.docs) {
     final data = doc.data();
+    Map<String, dynamic>? existingCanonical;
     final noteId = data['note_id']?.toString() ?? '';
     final email = data['shared_with_email']?.toString() ?? '';
-    final ownerId = data['owner_id']?.toString() ?? '';
-    final permission = data['permission']?.toString() ?? '';
-
-    if (noteId.isEmpty || email.isEmpty || ownerId.isEmpty) {
-      errors++;
-      print('ERROR ${doc.id}: faltan campos note_id/email/owner_id');
-      continue;
-    }
-
-    late final String canonicalId;
-    try {
-      canonicalId = NoteShareService.accessDocId(noteId, email);
-    } catch (e) {
-      errors++;
-      print('ERROR ${doc.id}: correo no soportado ($e)');
-      continue;
-    }
-
-    if (doc.id == canonicalId) {
-      alreadyMigrated++;
-      continue;
-    }
-
-    legacy++;
-    final canonicalRef = firestore
-        .collection(NoteShareService.collection)
-        .doc(canonicalId);
-    final existing = await canonicalRef.get();
-
-    if (existing.exists) {
-      final existingData = existing.data() ?? {};
-      final sameOwner = existingData['owner_id']?.toString() == ownerId;
-      final sameNote = existingData['note_id']?.toString() == noteId;
-      final sameEmail =
-          existingData['shared_with_email']?.toString() ==
-          email.trim().toLowerCase();
-      if (sameOwner && sameNote && sameEmail) {
-        alreadyMigrated++;
-        print('YA MIGRADO legacy=${doc.id} → $canonicalId');
-      } else {
-        conflicts++;
-        print(
-          'CONFLICTO legacy=${doc.id} canónico=$canonicalId '
-          'ya existe con datos distintos',
-        );
+    if (noteId.isNotEmpty && email.isNotEmpty) {
+      try {
+        final canonicalId = NoteShareService.accessDocId(noteId, email);
+        if (doc.id != canonicalId) {
+          final existing = await firestore
+              .collection(NoteShareService.collection)
+              .doc(canonicalId)
+              .get();
+          if (existing.exists) {
+            existingCanonical = existing.data();
+          }
+        }
+      } catch (_) {
+        // classify reportará el error de correo.
       }
-      continue;
     }
 
-    wouldCreate++;
-    print(
-      'CREARÍA canónico=$canonicalId desde legacy=${doc.id} '
-      'permission=$permission',
+    final item = SharedNotesMigration.classify(
+      documentId: doc.id,
+      data: data,
+      existingCanonical: existingCanonical,
     );
+    classified.add(item);
+    print(item.message);
 
     if (!apply) continue;
+    if (item.kind != SharedNotesMigrationKind.wouldCreate) continue;
+    final payload = item.payload;
+    final canonicalId = item.canonicalId;
+    if (payload == null || canonicalId == null) continue;
 
-    await canonicalRef.set({
-      'note_id': noteId,
-      'owner_id': ownerId,
-      'shared_with_email': email.trim().toLowerCase(),
-      'permission': permission == 'edit' ? 'edit' : 'read',
-      'created_at': data['created_at'] ?? FieldValue.serverTimestamp(),
-      'updated_at': FieldValue.serverTimestamp(),
-      'migrated_from': doc.id,
-    });
-    created++;
+    await firestore
+        .collection(NoteShareService.collection)
+        .doc(canonicalId)
+        .set({
+          ...payload,
+          'created_at': data['created_at'] ?? FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+    writes++;
   }
 
+  final summary = SharedNotesMigration.summarize(classified);
   print('---');
-  print('legacy encontrados: $legacy');
-  print('canónicos que se crearían: $wouldCreate');
-  print('ya migrados / canónicos: $alreadyMigrated');
-  print('conflictos: $conflicts');
-  print('errores: $errors');
+  print('legacy encontrados: ${summary.legacy}');
+  print('canónicos que se crearían: ${summary.wouldCreate}');
+  print('ya migrados / canónicos: ${summary.alreadyMigrated}');
+  print('conflictos: ${summary.conflicts}');
+  print('errores: ${summary.errors}');
   if (apply) {
-    print('canónicos creados: $created');
+    print('canónicos creados: $writes');
   } else {
     print('Ningún documento fue modificado (dry-run).');
+    print('escrituras realizadas: 0');
+  }
+
+  if (apply && !useEmulator) {
+    stderr.writeln(
+      'ADVERTENCIA: --apply fuera de emulador requiere autorización explícita.',
+    );
   }
 }

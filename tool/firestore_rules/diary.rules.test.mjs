@@ -17,7 +17,6 @@ import {
   where,
   orderBy,
   limit,
-  documentId,
   getDocs,
   Timestamp,
 } from 'firebase/firestore';
@@ -31,12 +30,14 @@ const env = await initializeTestEnvironment({
 });
 
 const noteA = {
+  id: 'note-a',
   user_id: 'user-a',
   title: 'Nota de A',
   content: 'privada',
   date: '2026-09-10',
 };
 const noteB = {
+  id: 'note-b',
   user_id: 'user-b',
   title: 'Nota de B',
   content: 'ajena',
@@ -69,7 +70,7 @@ function scopedEntryQuery(firestore, userId, entryId) {
     query(
       collection(firestore, 'diary_entries'),
       where('user_id', '==', userId),
-      where(documentId(), '==', entryId),
+      where('id', '==', entryId),
       limit(1),
     ),
   );
@@ -172,20 +173,27 @@ await check('GET ENTRY OWNED', async () => {
 });
 
 await check('GET ENTRY MISSING', async () => {
-  // documentId + user_id sobre un id inexistente: Rules evalúa resource nulo
-  // y responde permission-denied. El servicio Dart lo traduce a null.
-  await assertFails(
+  const snap = await assertSucceeds(
     scopedEntryQuery(db('user-a', 'a@example.com'), 'user-a', 'aun-no-existe'),
   );
+  if (snap.size !== 0) {
+    throw new Error('Una nota inexistente debe devolver snapshot vacío');
+  }
   console.log('GET ENTRY MISSING      PASS');
 });
 
 await check('GET ENTRY OTHER USER', async () => {
-  await assertFails(
+  const snap = await assertSucceeds(
     scopedEntryQuery(db('user-a', 'a@example.com'), 'user-a', 'note-b'),
   );
+  if (snap.size !== 0) {
+    throw new Error('La consulta de A por id de B debía quedar vacía');
+  }
+  console.log('GET ENTRY OTHER USER   PASS');
+});
+
+await check('GET ENTRY DIRECT OTHER USER DENIED', async () => {
   await assertFails(getDoc(doc(db('user-a', 'a@example.com'), 'diary_entries/note-b')));
-  console.log('GET ENTRY OTHER USER   DENIED/NULL SEGURO');
 });
 
 await check('una nota inexistente consultada por user_id no es permission-denied', async () => {

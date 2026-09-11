@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:diario_flutter/data/remote/firestore_diary_service.dart';
 import 'package:diario_flutter/data/repositories/diary_repository.dart';
 import 'package:diario_flutter/domain/models/diary_entry.dart';
@@ -198,32 +199,31 @@ void main() {
     );
   });
 
-  group('getEntryById no descarga todas las notas', () {
-    test(
-      'FirestoreDiaryService busca con documentId y user_id, no lista todo',
-      () {
-        final source = File(
-          'lib/data/remote/firestore_diary_service.dart',
-        ).readAsStringSync();
-        final classStart = source.indexOf('class FirestoreDiaryService');
-        expect(classStart, greaterThan(0));
-        final methodStart = source.indexOf(
-          'Future<DiaryEntry?> getEntryById',
-          classStart,
-        );
-        expect(methodStart, greaterThan(classStart));
-        final methodEnd = source.indexOf(
-          'Future<DiaryEntry> createEntry',
-          methodStart,
-        );
-        final method = source.substring(methodStart, methodEnd);
-        expect(method.contains('FieldPath.documentId'), isTrue);
-        expect(method.contains('.limit(1)'), isTrue);
-        expect(method.contains('_fetchEntriesForUser'), isFalse);
-        expect(method.contains('getAllEntries'), isFalse);
-        expect(method.contains('.doc(entryId).get()'), isFalse);
-      },
-    );
+  group('getEntryById consulta acotada por campos', () {
+    test('FirestoreDiaryService usa user_id + id con limit(1)', () {
+      final source = File(
+        'lib/data/remote/firestore_diary_service.dart',
+      ).readAsStringSync();
+      final classStart = source.indexOf('class FirestoreDiaryService');
+      expect(classStart, greaterThan(0));
+      final methodStart = source.indexOf(
+        'Future<DiaryEntry?> getEntryById',
+        classStart,
+      );
+      expect(methodStart, greaterThan(classStart));
+      final methodEnd = source.indexOf(
+        'Future<DiaryEntry> createEntry',
+        methodStart,
+      );
+      final method = source.substring(methodStart, methodEnd);
+      expect(method.contains("where('id', isEqualTo: entryId)"), isTrue);
+      expect(method.contains('.limit(1)'), isTrue);
+      expect(method.contains('FieldPath.documentId'), isFalse);
+      expect(method.contains('_fetchEntriesForUser'), isFalse);
+      expect(method.contains('getAllEntries'), isFalse);
+      expect(method.contains('.doc(entryId).get()'), isFalse);
+      expect(method.contains("if (e.code == 'permission-denied')"), isFalse);
+    });
 
     test('contrato remoto: getEntryById no implica getAllEntries', () async {
       final remote = _CountingRemote(
@@ -234,6 +234,32 @@ void main() {
       expect(remote.getEntryByIdCalls, 1);
       expect(remote.getAllEntriesCalls, 0);
     });
+
+    test(
+      'permission-denied real se propaga y no se convierte en null',
+      () async {
+        final service = FirestoreDiaryService(
+          scopedEntryQuery: (userId, entryId) async {
+            throw FirebaseException(
+              plugin: 'cloud_firestore',
+              code: 'permission-denied',
+              message: 'Missing or insufficient permissions.',
+            );
+          },
+        );
+
+        await expectLater(
+          service.getEntryById('nota', userId: 'user-a'),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('permission-denied'),
+            ),
+          ),
+        );
+      },
+    );
   });
 }
 

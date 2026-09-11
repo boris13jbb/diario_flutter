@@ -19,13 +19,22 @@ abstract class DiaryRemoteDataSource {
 
 /// Sincronización de entradas del diario con Cloud Firestore.
 class FirestoreDiaryService implements DiaryRemoteDataSource {
-  final FirebaseFirestore _firestore;
+  final FirebaseFirestore? _firestore;
 
-  FirestoreDiaryService({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  /// Permite inyectar la consulta acotada en pruebas (p. ej. errores reales).
+  final Future<QuerySnapshot<Map<String, dynamic>>> Function(
+    String userId,
+    String entryId,
+  )?
+  scopedEntryQuery;
+
+  FirestoreDiaryService({FirebaseFirestore? firestore, this.scopedEntryQuery})
+    : _firestore = firestore;
+
+  FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _collection =>
-      _firestore.collection(FirestoreDiaryMapper.collection);
+      firestore.collection(FirestoreDiaryMapper.collection);
 
   @override
   Future<List<DiaryEntry>> getAllEntries(String userId) async {
@@ -71,14 +80,12 @@ class FirestoreDiaryService implements DiaryRemoteDataSource {
 
   /// Busca una nota del usuario sin descargar todas sus entradas.
   ///
-  /// Usa `user_id` + [FieldPath.documentId] con `limit(1)`. No usa
-  /// `_collection.doc(entryId).get()` ni [getAllEntries].
+  /// Usa los campos `user_id` e `id` (ambos en [DiaryEntry.toRemoteMap]) con
+  /// `limit(1)`. No usa `_collection.doc(entryId).get()`,
+  /// [FieldPath.documentId], [getAllEntries] ni [_fetchEntriesForUser].
   ///
-  /// Con las reglas actuales, un documento inexistente o de otro usuario hace
-  /// que esa consulta acotada responda `permission-denied` (evaluación con
-  /// `resource` nulo o no propio). Ese resultado se traduce a `null` porque el
-  /// contrato es «nota de [userId] o ausente», no un fallo de autenticación de
-  /// listado. Cualquier otro error de Firebase se propaga.
+  /// Un resultado vacío es `null`. Un `permission-denied` u otro error de
+  /// Firebase se propaga; no se traduce a “nota inexistente”.
   @override
   Future<DiaryEntry?> getEntryById(
     String entryId, {
@@ -86,11 +93,13 @@ class FirestoreDiaryService implements DiaryRemoteDataSource {
   }) async {
     if (entryId.isEmpty || userId.isEmpty) return null;
     try {
-      final snapshot = await _collection
-          .where('user_id', isEqualTo: userId)
-          .where(FieldPath.documentId, isEqualTo: entryId)
-          .limit(1)
-          .get();
+      final snapshot =
+          await (scopedEntryQuery?.call(userId, entryId) ??
+              _collection
+                  .where('user_id', isEqualTo: userId)
+                  .where('id', isEqualTo: entryId)
+                  .limit(1)
+                  .get());
       if (snapshot.docs.isEmpty) return null;
       final entry = FirestoreDiaryMapper.tryFromDocument(snapshot.docs.first);
       if (entry == null || entry.userId != userId || entry.id != entryId) {
@@ -98,10 +107,9 @@ class FirestoreDiaryService implements DiaryRemoteDataSource {
       }
       return entry;
     } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') {
-        return null;
-      }
-      throw Exception('Error al obtener entrada: ${e.message ?? e.code}');
+      throw Exception(
+        'Error al obtener entrada: ${e.code}${e.message == null ? '' : ': ${e.message}'}',
+      );
     } catch (e) {
       throw Exception('Error al obtener entrada: $e');
     }
