@@ -15,6 +15,12 @@ part 'database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openConnection());
 
+  /// Abre un archivo SQLite concreto.
+  ///
+  /// La aplicación usa [AppDatabase]. Este constructor existe para pruebas
+  /// aisladas que no deben escribir en el diario del usuario.
+  AppDatabase.connect(super.executor);
+
   @override
   int get schemaVersion => 3;
 

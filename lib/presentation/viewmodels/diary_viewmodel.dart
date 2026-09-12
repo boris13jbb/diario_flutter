@@ -133,11 +133,11 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
     FavoritesService? favoritesService,
     CategoriesRepository? categoriesRepository,
     NoteExportService? exportService,
-  ])  : _favoritesService = favoritesService ?? FavoritesService(),
-        _categoriesRepository =
-            categoriesRepository ?? getIt<CategoriesRepository>(),
-        _exportService = exportService ?? NoteExportService(),
-        super(const DiaryState());
+  ]) : _favoritesService = favoritesService ?? FavoritesService(),
+       _categoriesRepository =
+           categoriesRepository ?? getIt<CategoriesRepository>(),
+       _exportService = exportService ?? NoteExportService(),
+       super(const DiaryState());
 
   @override
   void dispose() {
@@ -196,6 +196,7 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
       final entries = await _diaryRepository.getAllEntries(userId);
 
       final categoryCount = state.categories.length;
+      final pending = entries.where((entry) => !entry.synced).length;
       final parts = <String>[
         '${entries.length} notas',
         '$categoryCount categorías',
@@ -206,7 +207,11 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
       if (result.savedCount > 0) {
         parts.add('${result.savedCount} actualizadas');
       }
+      if (pending > 0) {
+        parts.add('$pending pendientes');
+      }
 
+      final unresolved = result.failedCount > 0 || pending > 0;
       state = state.copyWith(
         entries: entries,
         lastSyncedAt: DateTime.now(),
@@ -214,7 +219,7 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
         syncMessage: result.remoteCount == 0 && entries.isEmpty
             ? 'No hay notas en la nube para esta cuenta'
             : parts.join(' · '),
-        error: null,
+        error: unresolved ? 'Quedan $pending notas sin sincronizar' : null,
       );
 
       _startAutoSyncTimer();
@@ -251,8 +256,9 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
             .toList();
         break;
       case DiaryListFilter.recent:
-        final cutoff =
-            DateTime.now().subtract(const Duration(days: kRecentNotesDays));
+        final cutoff = DateTime.now().subtract(
+          const Duration(days: kRecentNotesDays),
+        );
         list = list
             .where(
               (e) =>
@@ -275,9 +281,7 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
         break;
       case DiaryListFilter.reminders:
         list = list
-            .where(
-              (e) => !e.isDeleted && !e.isArchived && e.reminderAt != null,
-            )
+            .where((e) => !e.isDeleted && !e.isArchived && e.reminderAt != null)
             .toList();
         break;
       case DiaryListFilter.all:
@@ -298,9 +302,7 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
     if (categoryKey != null) {
       if (categoryKey == CategoryFilterTokens.uncategorized) {
         list = list
-            .where(
-              (e) => e.categoryId == null || e.categoryId!.trim().isEmpty,
-            )
+            .where((e) => e.categoryId == null || e.categoryId!.trim().isEmpty)
             .toList();
       } else {
         list = list.where((e) => e.categoryId == categoryKey).toList();
@@ -310,8 +312,7 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
     final query = state.searchQuery.trim().toLowerCase();
     if (query.isNotEmpty) {
       list = list.where((e) {
-        final categoryName =
-            categoryForEntry(e)?.name.toLowerCase() ?? '';
+        final categoryName = categoryForEntry(e)?.name.toLowerCase() ?? '';
         final tags = e.tags.map((t) => t.toLowerCase()).join(' ');
         return e.title.toLowerCase().contains(query) ||
             e.content.toLowerCase().contains(query) ||
@@ -353,17 +354,12 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
         break;
       case DiarySortOrder.updatedDesc:
         list.sort(
-          (a, b) => pinAware(
-            a,
-            b,
-            _entryDateTime(b).compareTo(_entryDateTime(a)),
-          ),
+          (a, b) =>
+              pinAware(a, b, _entryDateTime(b).compareTo(_entryDateTime(a))),
         );
         break;
       case DiarySortOrder.priorityDesc:
-        list.sort(
-          (a, b) => pinAware(a, b, b.priority.compareTo(a.priority)),
-        );
+        list.sort((a, b) => pinAware(a, b, b.priority.compareTo(a.priority)));
         break;
     }
   }
@@ -505,10 +501,11 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
         userId: userId,
         category: category,
       );
-      final list = state.categories
-          .map((c) => c.id == updated.id ? updated : c)
-          .toList()
-        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      final list =
+          state.categories.map((c) => c.id == updated.id ? updated : c).toList()
+            ..sort(
+              (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+            );
       state = state.copyWith(categories: list);
       return updated;
     } catch (e) {
@@ -532,8 +529,9 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
       await _diaryRepository.clearCategoryFromEntries(categoryId);
 
       final entries = await _diaryRepository.getAllEntries(userId);
-      final categories =
-          state.categories.where((c) => c.id != categoryId).toList();
+      final categories = state.categories
+          .where((c) => c.id != categoryId)
+          .toList();
       final filterKey = state.categoryFilterKey == categoryId
           ? null
           : state.categoryFilterKey;
@@ -593,12 +591,10 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
     state = state.copyWith(isLoading: true, error: null);
 
     _entriesSubscription?.cancel();
-    _entriesSubscription =
-        _diaryRepository.watchEntries(userId).listen((entries) {
-      state = state.copyWith(
-        entries: entries,
-        isLoading: false,
-      );
+    _entriesSubscription = _diaryRepository.watchEntries(userId).listen((
+      entries,
+    ) {
+      state = state.copyWith(entries: entries, isLoading: false);
     });
 
     // Arranca el timer aunque la primera sync falle (offline).
@@ -663,8 +659,9 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
         date: date,
         title: title,
         content: content,
-        categoryId:
-            categoryId != null && categoryId.isEmpty ? null : categoryId,
+        categoryId: categoryId != null && categoryId.isEmpty
+            ? null
+            : categoryId,
         priority: priority,
         colorValue: colorValue,
         tags: tags,
@@ -692,14 +689,7 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
       return null;
     }
 
-    DiaryEntry? source;
-    for (final entry in state.entries) {
-      if (entry.id == entryId) {
-        source = entry;
-        break;
-      }
-    }
-    source ??= await _diaryRepository.getEntryById(entryId);
+    final source = await _entryOwnedByCurrentUser(entryId);
     if (source == null) {
       state = state.copyWith(error: 'Nota no encontrada');
       return null;
@@ -719,9 +709,7 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
       unawaited(_syncAfterLocalChange());
       return copy.id;
     } catch (e) {
-      state = state.copyWith(
-        error: e.toString().replaceAll('Exception: ', ''),
-      );
+      state = state.copyWith(error: e.toString().replaceAll('Exception: ', ''));
       return null;
     }
   }
@@ -730,14 +718,7 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
     String entryId, {
     NoteExportFormat format = NoteExportFormat.markdown,
   }) async {
-    DiaryEntry? entry;
-    for (final e in state.entries) {
-      if (e.id == entryId) {
-        entry = e;
-        break;
-      }
-    }
-    entry ??= await _diaryRepository.getEntryById(entryId);
+    final entry = await _entryOwnedByCurrentUser(entryId);
     if (entry == null) {
       state = state.copyWith(error: 'Nota no encontrada');
       return null;
@@ -764,14 +745,7 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
     NoteExportFormat format = NoteExportFormat.markdown,
     Rect? sharePositionOrigin,
   }) async {
-    DiaryEntry? entry;
-    for (final e in state.entries) {
-      if (e.id == entryId) {
-        entry = e;
-        break;
-      }
-    }
-    entry ??= await _diaryRepository.getEntryById(entryId);
+    final entry = await _entryOwnedByCurrentUser(entryId);
     if (entry == null) {
       state = state.copyWith(error: 'Nota no encontrada');
       return false;
@@ -825,14 +799,7 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
   }
 
   Future<void> printEntry(String entryId) async {
-    DiaryEntry? entry;
-    for (final e in state.entries) {
-      if (e.id == entryId) {
-        entry = e;
-        break;
-      }
-    }
-    entry ??= await _diaryRepository.getEntryById(entryId);
+    final entry = await _entryOwnedByCurrentUser(entryId);
     if (entry == null) {
       state = state.copyWith(error: 'Nota no encontrada');
       return;
@@ -878,19 +845,27 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
     final entry = await _findEntry(entryId);
     if (entry == null) return false;
     return updateEntry(
-      entry.copyWith(isArchived: archive, isPinned: archive ? false : entry.isPinned),
+      entry.copyWith(
+        isArchived: archive,
+        isPinned: archive ? false : entry.isPinned,
+      ),
     );
   }
 
   Future<bool> moveToTrash(String entryId) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      await _diaryRepository.softDeleteEntry(entryId);
-      final favorites = Set<String>.from(state.favoriteIds)..remove(entryId);
       final userId = _ref.read(authViewModelProvider).userId;
-      if (userId != null) {
-        await _favoritesService.saveFavoriteIds(userId, favorites);
+      if (userId == null || userId.isEmpty) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'Usuario no autenticado',
+        );
+        return false;
       }
+      await _diaryRepository.softDeleteEntry(entryId, userId: userId);
+      final favorites = Set<String>.from(state.favoriteIds)..remove(entryId);
+      await _favoritesService.saveFavoriteIds(userId, favorites);
       state = state.copyWith(isLoading: false, favoriteIds: favorites);
       unawaited(_syncAfterLocalChange());
       return true;
@@ -905,32 +880,35 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
 
   Future<bool> restoreFromTrash(String entryId) async {
     try {
-      await _diaryRepository.restoreEntry(entryId);
+      final userId = _ref.read(authViewModelProvider).userId;
+      if (userId == null || userId.isEmpty) {
+        state = state.copyWith(error: 'Usuario no autenticado');
+        return false;
+      }
+      await _diaryRepository.restoreEntry(entryId, userId: userId);
       unawaited(_syncAfterLocalChange());
       return true;
     } catch (e) {
-      state = state.copyWith(
-        error: e.toString().replaceAll('Exception: ', ''),
-      );
+      state = state.copyWith(error: e.toString().replaceAll('Exception: ', ''));
       return false;
     }
   }
 
   Future<bool> permanentlyDelete(String entryId) async {
     try {
-      await _diaryRepository.hardDeleteEntry(entryId);
-      final favorites = Set<String>.from(state.favoriteIds)..remove(entryId);
       final userId = _ref.read(authViewModelProvider).userId;
-      if (userId != null) {
-        await _favoritesService.saveFavoriteIds(userId, favorites);
+      if (userId == null || userId.isEmpty) {
+        state = state.copyWith(error: 'Usuario no autenticado');
+        return false;
       }
+      await _diaryRepository.hardDeleteEntry(entryId, userId: userId);
+      final favorites = Set<String>.from(state.favoriteIds)..remove(entryId);
+      await _favoritesService.saveFavoriteIds(userId, favorites);
       state = state.copyWith(favoriteIds: favorites);
       unawaited(_syncAfterLocalChange());
       return true;
     } catch (e) {
-      state = state.copyWith(
-        error: e.toString().replaceAll('Exception: ', ''),
-      );
+      state = state.copyWith(error: e.toString().replaceAll('Exception: ', ''));
       return false;
     }
   }
@@ -943,9 +921,7 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
       unawaited(_syncAfterLocalChange());
       return true;
     } catch (e) {
-      state = state.copyWith(
-        error: e.toString().replaceAll('Exception: ', ''),
-      );
+      state = state.copyWith(error: e.toString().replaceAll('Exception: ', ''));
       return false;
     }
   }
@@ -960,19 +936,22 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
       unawaited(_syncAfterLocalChange());
       return true;
     } catch (e) {
-      state = state.copyWith(
-        error: e.toString().replaceAll('Exception: ', ''),
-      );
+      state = state.copyWith(error: e.toString().replaceAll('Exception: ', ''));
       return false;
     }
   }
 
-  Future<DiaryEntry?> _findEntry(String entryId) async {
-    for (final e in state.entries) {
-      if (e.id == entryId) return e;
+  Future<DiaryEntry?> _entryOwnedByCurrentUser(String entryId) async {
+    final userId = _ref.read(authViewModelProvider).userId;
+    if (userId == null || userId.isEmpty) return null;
+    for (final entry in state.entries) {
+      if (entry.id == entryId && entry.userId == userId) return entry;
     }
-    return _diaryRepository.getEntryById(entryId);
+    return _diaryRepository.getEntryById(entryId, userId: userId);
   }
+
+  Future<DiaryEntry?> _findEntry(String entryId) =>
+      _entryOwnedByCurrentUser(entryId);
 
   /// Elimina (soft) — mantiene compatibilidad con UI existente.
   Future<bool> deleteEntry(String entryId) => moveToTrash(entryId);
@@ -1013,34 +992,30 @@ class DiaryViewModel extends StateNotifier<DiaryState> {
   }
 }
 
-final diaryViewModelProvider =
-    StateNotifierProvider<DiaryViewModel, DiaryState>((ref) {
+final diaryViewModelProvider = StateNotifierProvider<DiaryViewModel, DiaryState>((
+  ref,
+) {
   final diaryRepository = getIt<DiaryRepository>();
   final viewModel = DiaryViewModel(diaryRepository, ref);
 
   ref.onDispose(viewModel.dispose);
 
   // Dispara también el estado inicial (sesión ya autenticada al abrir la app).
-  ref.listen<AuthState>(
-    authViewModelProvider,
-    (previous, next) {
-      if (!next.isAuthenticated ||
-          next.userId == null ||
-          next.userId!.isEmpty) {
-        viewModel.clearEntries();
-        return;
-      }
+  ref.listen<AuthState>(authViewModelProvider, (previous, next) {
+    if (!next.isAuthenticated || next.userId == null || next.userId!.isEmpty) {
+      viewModel.clearEntries();
+      return;
+    }
 
-      final shouldReload = previous == null ||
-          !previous.isAuthenticated ||
-          previous.userId != next.userId;
+    final shouldReload =
+        previous == null ||
+        !previous.isAuthenticated ||
+        previous.userId != next.userId;
 
-      if (shouldReload) {
-        unawaited(viewModel.reloadEntries());
-      }
-    },
-    fireImmediately: true,
-  );
+    if (shouldReload) {
+      unawaited(viewModel.reloadEntries());
+    }
+  }, fireImmediately: true);
 
   return viewModel;
 });

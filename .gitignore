@@ -46,6 +46,8 @@ app.*.map.json
 
 # Migración Supabase → Firebase (secretos)
 tools/migrate_supabase_to_firestore/node_modules/
+tool/firestore_rules/node_modules/
+firestore-debug.log
 tools/migrate_supabase_to_firestore/.env
 tools/migrate_supabase_to_firestore/serviceAccountKey.json
 tools/migrate_supabase_to_firestore/*-firebase-adminsdk-*.json

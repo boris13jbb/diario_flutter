@@ -39,9 +39,7 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
     if (!mounted) return;
 
     final state = ref.read(diaryViewModelProvider);
-    final message = state.error ??
-        state.syncMessage ??
-        'Notas sincronizadas';
+    final message = state.error ?? state.syncMessage ?? 'Notas sincronizadas';
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -56,15 +54,22 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
 
   Future<void> _loadEntry() async {
     try {
+      final userId = ref.read(authViewModelProvider).userId;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('Usuario no autenticado');
+      }
       final state = ref.read(diaryViewModelProvider);
       DiaryEntry? foundEntry;
       for (final e in state.entries) {
-        if (e.id == widget.entryId) {
+        if (e.id == widget.entryId && e.userId == userId) {
           foundEntry = e;
           break;
         }
       }
-      foundEntry ??= await getIt<DiaryRepository>().getEntryById(widget.entryId);
+      foundEntry ??= await getIt<DiaryRepository>().getEntryById(
+        widget.entryId,
+        userId: userId,
+      );
 
       if (foundEntry == null) {
         throw Exception('Entrada no encontrada');
@@ -132,11 +137,19 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? FluentColors.surfaceDark : FluentColors.surfaceLight;
-    final textColor = isDark ? FluentColors.textPrimaryDark : FluentColors.textPrimaryLight;
-    final secondaryTextColor = isDark ? FluentColors.textSecondaryDark : FluentColors.textSecondaryLight;
-    final isFavorite =
-        ref.watch(diaryViewModelProvider).favoriteIds.contains(entry!.id);
+    final bgColor = isDark
+        ? FluentColors.surfaceDark
+        : FluentColors.surfaceLight;
+    final textColor = isDark
+        ? FluentColors.textPrimaryDark
+        : FluentColors.textPrimaryLight;
+    final secondaryTextColor = isDark
+        ? FluentColors.textSecondaryDark
+        : FluentColors.textSecondaryLight;
+    final isFavorite = ref
+        .watch(diaryViewModelProvider)
+        .favoriteIds
+        .contains(entry!.id);
 
     final windowCompact = LayoutBreakpoints.isCompact(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
@@ -327,8 +340,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
               title: Text(
                 task.title,
                 style: TextStyle(
-                  decoration:
-                      task.completed ? TextDecoration.lineThrough : null,
+                  decoration: task.completed
+                      ? TextDecoration.lineThrough
+                      : null,
                   color: textColor,
                 ),
               ),
@@ -351,12 +365,15 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
   }
 
   Widget _buildContentCard(bool isDark, Color textColor) {
-    final noteColor = entry!.colorValue != null ? Color(entry!.colorValue!) : null;
+    final noteColor = entry!.colorValue != null
+        ? Color(entry!.colorValue!)
+        : null;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(FluentSpacing.xl),
       decoration: BoxDecoration(
-        color: noteColor?.withValues(alpha: isDark ? 0.18 : 0.45) ??
+        color:
+            noteColor?.withValues(alpha: isDark ? 0.18 : 0.45) ??
             (isDark
                 ? FluentColors.surfaceVariantDark.withValues(alpha: 0.35)
                 : FluentColors.surfaceVariantLight.withValues(alpha: 0.45)),
@@ -371,8 +388,8 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
           fontSize: 16,
           color: entry!.content.isEmpty
               ? (isDark
-                  ? FluentColors.textSecondaryDark
-                  : FluentColors.textSecondaryLight)
+                    ? FluentColors.textSecondaryDark
+                    : FluentColors.textSecondaryLight)
               : textColor,
           height: 1.75,
         ),
@@ -407,8 +424,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
             isFavorite ? Icons.star : Icons.star_border,
             color: FluentColors.warning,
           ),
-          onPressed: () =>
-              ref.read(diaryViewModelProvider.notifier).toggleFavorite(entry!.id),
+          onPressed: () => ref
+              .read(diaryViewModelProvider.notifier)
+              .toggleFavorite(entry!.id),
         ),
         PopupMenuButton<String>(
           icon: Icon(Icons.more_vert, color: textColor),
@@ -484,10 +502,22 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
               child: Text(entry!.isArchived ? 'Desarchivar' : 'Archivar'),
             ),
             const PopupMenuItem(value: 'duplicate', child: Text('Duplicar')),
-            const PopupMenuItem(value: 'export_md', child: Text('Exportar Markdown')),
-            const PopupMenuItem(value: 'export_txt', child: Text('Exportar TXT')),
-            const PopupMenuItem(value: 'export_pdf', child: Text('Exportar PDF')),
-            const PopupMenuItem(value: 'export_word', child: Text('Exportar Word')),
+            const PopupMenuItem(
+              value: 'export_md',
+              child: Text('Exportar Markdown'),
+            ),
+            const PopupMenuItem(
+              value: 'export_txt',
+              child: Text('Exportar TXT'),
+            ),
+            const PopupMenuItem(
+              value: 'export_pdf',
+              child: Text('Exportar PDF'),
+            ),
+            const PopupMenuItem(
+              value: 'export_word',
+              child: Text('Exportar Word'),
+            ),
             const PopupMenuItem(value: 'share', child: Text('Compartir…')),
             const PopupMenuItem(value: 'print', child: Text('Imprimir')),
             const PopupMenuItem(value: 'copy', child: Text('Copiar contenido')),
@@ -495,14 +525,18 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
               const PopupMenuItem(value: 'restore', child: Text('Restaurar')),
               const PopupMenuItem(
                 value: 'hard_delete',
-                child: Text('Eliminar definitivamente',
-                    style: TextStyle(color: FluentColors.error)),
+                child: Text(
+                  'Eliminar definitivamente',
+                  style: TextStyle(color: FluentColors.error),
+                ),
               ),
             ] else
               const PopupMenuItem(
                 value: 'delete',
-                child: Text('Mover a papelera',
-                    style: TextStyle(color: FluentColors.error)),
+                child: Text(
+                  'Mover a papelera',
+                  style: TextStyle(color: FluentColors.error),
+                ),
               ),
           ],
         ),
@@ -544,7 +578,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
       Container(
         margin: const EdgeInsets.only(right: FluentSpacing.xs),
         decoration: BoxDecoration(
-          color: isDark ? FluentColors.surfaceVariantDark : FluentColors.surfaceVariantLight,
+          color: isDark
+              ? FluentColors.surfaceVariantDark
+              : FluentColors.surfaceVariantLight,
           borderRadius: BorderRadius.circular(FluentRadius.md),
           border: Border.all(
             color: isDark ? FluentColors.borderDark : FluentColors.borderLight,
@@ -571,8 +607,12 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
         ),
         child: IconButton(
           icon: const Icon(Icons.delete, size: 20, color: FluentColors.error),
-          onPressed: entry!.isDeleted ? _showHardDeleteDialog : _showDeleteDialog,
-          tooltip: entry!.isDeleted ? 'Eliminar definitivamente' : 'Mover a papelera',
+          onPressed: entry!.isDeleted
+              ? _showHardDeleteDialog
+              : _showDeleteDialog,
+          tooltip: entry!.isDeleted
+              ? 'Eliminar definitivamente'
+              : 'Mover a papelera',
           padding: const EdgeInsets.all(8),
           constraints: const BoxConstraints(),
         ),
@@ -628,10 +668,16 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
             value: 'archive',
             child: Text(entry!.isArchived ? 'Desarchivar' : 'Archivar'),
           ),
-          const PopupMenuItem(value: 'export_md', child: Text('Exportar Markdown')),
+          const PopupMenuItem(
+            value: 'export_md',
+            child: Text('Exportar Markdown'),
+          ),
           const PopupMenuItem(value: 'export_txt', child: Text('Exportar TXT')),
           const PopupMenuItem(value: 'export_pdf', child: Text('Exportar PDF')),
-          const PopupMenuItem(value: 'export_word', child: Text('Exportar Word')),
+          const PopupMenuItem(
+            value: 'export_word',
+            child: Text('Exportar Word'),
+          ),
           const PopupMenuItem(value: 'share', child: Text('Compartir…')),
           const PopupMenuItem(value: 'print', child: Text('Imprimir')),
           const PopupMenuItem(value: 'copy', child: Text('Copiar contenido')),
@@ -658,7 +704,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
                 : FluentColors.surfaceVariantLight,
             borderRadius: BorderRadius.circular(FluentRadius.lg),
             border: Border.all(
-              color: isDark ? FluentColors.borderDark : FluentColors.borderLight,
+              color: isDark
+                  ? FluentColors.borderDark
+                  : FluentColors.borderLight,
             ),
           ),
           child: Row(
@@ -699,8 +747,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
               Icon(
                 entry!.synced ? Icons.cloud_done : Icons.cloud_upload,
                 size: 16,
-                color:
-                    entry!.synced ? FluentColors.success : FluentColors.warning,
+                color: entry!.synced
+                    ? FluentColors.success
+                    : FluentColors.warning,
               ),
               const SizedBox(width: FluentSpacing.xs),
               Text(
@@ -738,7 +787,11 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
     );
   }
 
-  Widget _buildMultimediaSection(bool isDark, Color textColor, Color secondaryTextColor) {
+  Widget _buildMultimediaSection(
+    bool isDark,
+    Color textColor,
+    Color secondaryTextColor,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -776,30 +829,35 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
     );
   }
 
-  Widget _buildMultimediaItem(IconData icon, String text, bool isDark, Color secondaryTextColor) {
+  Widget _buildMultimediaItem(
+    IconData icon,
+    String text,
+    bool isDark,
+    Color secondaryTextColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: FluentSpacing.sm),
       child: Row(
         children: [
           Icon(icon, size: 20, color: secondaryTextColor),
           const SizedBox(width: FluentSpacing.sm),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 14,
-              color: secondaryTextColor,
-            ),
-          ),
+          Text(text, style: TextStyle(fontSize: 14, color: secondaryTextColor)),
         ],
       ),
     );
   }
 
-  Widget _buildInfoSection(bool isDark, Color textColor, Color secondaryTextColor) {
+  Widget _buildInfoSection(
+    bool isDark,
+    Color textColor,
+    Color secondaryTextColor,
+  ) {
     final auth = ref.watch(authViewModelProvider);
     final attachments = DiaryEntryDisplay.attachmentsSummary(entry!);
 
-    final category = ref.read(diaryViewModelProvider.notifier).categoryForEntry(entry!);
+    final category = ref
+        .read(diaryViewModelProvider.notifier)
+        .categoryForEntry(entry!);
 
     final rows = <Widget>[
       _buildInfoRow(
@@ -926,7 +984,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
                 : FluentColors.surfaceVariantLight.withValues(alpha: 0.45),
             borderRadius: BorderRadius.circular(FluentRadius.xl),
             border: Border.all(
-              color: isDark ? FluentColors.borderDark : FluentColors.borderLight,
+              color: isDark
+                  ? FluentColors.borderDark
+                  : FluentColors.borderLight,
             ),
           ),
           child: Column(
@@ -969,11 +1029,7 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
               const SizedBox(height: 4),
               Text(
                 value,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.35,
-                  color: valueColor,
-                ),
+                style: TextStyle(fontSize: 14, height: 1.35, color: valueColor),
               ),
             ],
           ),
@@ -984,8 +1040,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
 
   Future<void> _duplicateEntry() async {
     if (entry == null) return;
-    final newId =
-        await ref.read(diaryViewModelProvider.notifier).duplicateEntry(entry!.id);
+    final newId = await ref
+        .read(diaryViewModelProvider.notifier)
+        .duplicateEntry(entry!.id);
     if (!mounted) return;
     if (newId == null) {
       final error = ref.read(diaryViewModelProvider).error;
@@ -997,13 +1054,15 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Nota duplicada')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Nota duplicada')));
     context.push('${AppRoutes.entryDetail}/$newId');
   }
 
-  Future<void> _exportEntry([NoteExportFormat format = NoteExportFormat.markdown]) async {
+  Future<void> _exportEntry([
+    NoteExportFormat format = NoteExportFormat.markdown,
+  ]) async {
     if (entry == null) return;
     final path = await ref
         .read(diaryViewModelProvider.notifier)
@@ -1066,14 +1125,13 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
     if (format == null || !mounted) return;
 
     final box = context.findRenderObject() as RenderBox?;
-    final origin =
-        box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+    final origin = box == null
+        ? null
+        : box.localToGlobal(Offset.zero) & box.size;
 
-    final ok = await ref.read(diaryViewModelProvider.notifier).shareEntry(
-          entry!.id,
-          format: format,
-          sharePositionOrigin: origin,
-        );
+    final ok = await ref
+        .read(diaryViewModelProvider.notifier)
+        .shareEntry(entry!.id, format: format, sharePositionOrigin: origin);
     if (!mounted) return;
     if (!ok) {
       final error = ref.read(diaryViewModelProvider).error;
@@ -1085,9 +1143,9 @@ class _FluentDetailScreenState extends ConsumerState<FluentDetailScreen> {
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Listo para compartir')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Listo para compartir')));
   }
 
   Future<void> _copyContent() async {

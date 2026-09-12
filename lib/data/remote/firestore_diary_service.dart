@@ -2,16 +2,41 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/models/diary_entry.dart';
 import 'firestore_diary_mapper.dart';
 
-/// Sincronización de entradas del diario con Cloud Firestore.
-class FirestoreDiaryService {
-  final FirebaseFirestore _firestore;
+/// Acceso remoto a notas, siempre acotado al usuario autenticado.
+abstract class DiaryRemoteDataSource {
+  Future<List<DiaryEntry>> getAllEntries(String userId);
 
-  FirestoreDiaryService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  /// Nota del usuario, o null si no existe para ese usuario.
+  /// No debe convertir "no existe" en un error de permisos.
+  Future<DiaryEntry?> getEntryById(String entryId, {required String userId});
+
+  Future<DiaryEntry> createEntry(DiaryEntry entry);
+
+  Future<DiaryEntry> updateEntry(DiaryEntry entry);
+
+  Future<void> deleteEntry(String entryId, {required String userId});
+}
+
+/// Sincronización de entradas del diario con Cloud Firestore.
+class FirestoreDiaryService implements DiaryRemoteDataSource {
+  final FirebaseFirestore? _firestore;
+
+  /// Permite inyectar la consulta acotada en pruebas (p. ej. errores reales).
+  final Future<QuerySnapshot<Map<String, dynamic>>> Function(
+    String userId,
+    String entryId,
+  )?
+  scopedEntryQuery;
+
+  FirestoreDiaryService({FirebaseFirestore? firestore, this.scopedEntryQuery})
+    : _firestore = firestore;
+
+  FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _collection =>
-      _firestore.collection(FirestoreDiaryMapper.collection);
+      firestore.collection(FirestoreDiaryMapper.collection);
 
+  @override
   Future<List<DiaryEntry>> getAllEntries(String userId) async {
     try {
       return await _fetchEntriesForUser(userId, withDateOrder: true);
@@ -30,8 +55,10 @@ class FirestoreDiaryService {
     String userId, {
     required bool withDateOrder,
   }) async {
-    Query<Map<String, dynamic>> query =
-        _collection.where('user_id', isEqualTo: userId);
+    Query<Map<String, dynamic>> query = _collection.where(
+      'user_id',
+      isEqualTo: userId,
+    );
     if (withDateOrder) {
       query = query.orderBy('date', descending: true);
     }
@@ -51,43 +78,84 @@ class FirestoreDiaryService {
     return entries;
   }
 
-  Future<DiaryEntry?> getEntryById(String entryId) async {
+  /// Busca una nota del usuario sin descargar todas sus entradas.
+  ///
+  /// Usa los campos `user_id` e `id` (ambos en [DiaryEntry.toRemoteMap]) con
+  /// `limit(1)`. No usa `_collection.doc(entryId).get()`,
+  /// [FieldPath.documentId], [getAllEntries] ni [_fetchEntriesForUser].
+  ///
+  /// Un resultado vacío es `null`. Un `permission-denied` u otro error de
+  /// Firebase se propaga; no se traduce a “nota inexistente”.
+  @override
+  Future<DiaryEntry?> getEntryById(
+    String entryId, {
+    required String userId,
+  }) async {
+    if (entryId.isEmpty || userId.isEmpty) return null;
     try {
-      final doc = await _collection.doc(entryId).get();
-      if (!doc.exists) return null;
-      return FirestoreDiaryMapper.fromDocument(doc);
+      final snapshot =
+          await (scopedEntryQuery?.call(userId, entryId) ??
+              _collection
+                  .where('user_id', isEqualTo: userId)
+                  .where('id', isEqualTo: entryId)
+                  .limit(1)
+                  .get());
+      if (snapshot.docs.isEmpty) return null;
+      final entry = FirestoreDiaryMapper.tryFromDocument(snapshot.docs.first);
+      if (entry == null || entry.userId != userId || entry.id != entryId) {
+        return null;
+      }
+      return entry;
+    } on FirebaseException catch (e) {
+      throw Exception(
+        'Error al obtener entrada: ${e.code}${e.message == null ? '' : ': ${e.message}'}',
+      );
     } catch (e) {
       throw Exception('Error al obtener entrada: $e');
     }
   }
 
+  @override
   Future<DiaryEntry> createEntry(DiaryEntry entry) async {
     try {
+      _requireOwner(entry);
       final data = FirestoreDiaryMapper.toFirestore(entry);
       await _collection.doc(entry.id).set(data);
-      final saved = await getEntryById(entry.id);
+      final saved = await getEntryById(entry.id, userId: entry.userId);
       return saved ?? entry.copyWith(synced: true);
     } catch (e) {
       throw Exception('Error al crear entrada: $e');
     }
   }
 
+  @override
   Future<DiaryEntry> updateEntry(DiaryEntry entry) async {
     try {
+      _requireOwner(entry);
       final data = FirestoreDiaryMapper.toFirestore(entry);
       await _collection.doc(entry.id).set(data, SetOptions(merge: true));
-      final saved = await getEntryById(entry.id);
+      final saved = await getEntryById(entry.id, userId: entry.userId);
       return saved ?? entry.copyWith(synced: true);
     } catch (e) {
       throw Exception('Error al actualizar entrada: $e');
     }
   }
 
-  Future<void> deleteEntry(String entryId) async {
+  /// Borra solo si la nota pertenece a [userId]. Si no existe, no es un error.
+  @override
+  Future<void> deleteEntry(String entryId, {required String userId}) async {
     try {
+      final owned = await getEntryById(entryId, userId: userId);
+      if (owned == null) return;
       await _collection.doc(entryId).delete();
     } catch (e) {
       throw Exception('Error al eliminar entrada: $e');
+    }
+  }
+
+  void _requireOwner(DiaryEntry entry) {
+    if (entry.userId.isEmpty) {
+      throw Exception('La nota no tiene propietario');
     }
   }
 
