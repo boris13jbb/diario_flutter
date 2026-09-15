@@ -1,0 +1,26 @@
+# Flutter / Dart local build artifacts
+build/
+.dart_tool/
+
+# Local tooling
+.cursor/
+.vercel/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local Android build caches
+android/.gradle/
+android/app/build/
+
+# CocoaPods locales si existen
+ios/Pods/
+macos/Pods/
+
+# Logs y paquetes generados
+*.log
+*.apk
+*.aab
