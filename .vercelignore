@@ -12,15 +12,32 @@ build/
 .DS_Store
 Thumbs.db
 
-# Local Android build caches
+# Platform local build trees (not required for remote Flutter web build)
+windows/
+linux/
+macos/
+ios/
 android/.gradle/
 android/app/build/
-
-# CocoaPods locales si existen
+android/.cxx/
 ios/Pods/
 macos/Pods/
+
+# Local helper trees / migrations (not needed for web runtime)
+tool/migrate_supabase_to_firestore/
+tool/firestore_rules/
+tools/
 
 # Logs y paquetes generados
 *.log
 *.apk
 *.aab
+*.exe
+*.dll
+*.lib
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.zip
+diario_flutter.zip
